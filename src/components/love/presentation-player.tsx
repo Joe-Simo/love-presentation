@@ -9,7 +9,7 @@ import {
   BadgeCheckIcon,
   LinkIcon,
 } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,6 +87,39 @@ function PresentationPlayerDeck({
       animation.kill();
     };
   }, [presentation.id, safeActiveIndex]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const tagName =
+        target instanceof HTMLElement ? target.tagName.toLowerCase() : "";
+
+      if (
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (event.key === " " || event.key === "ArrowRight") {
+        event.preventDefault();
+        setActiveIndex((current) =>
+          Math.min(presentation.slides.length - 1, current + 1),
+        );
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setActiveIndex((current) => Math.max(0, current - 1));
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [presentation.slides.length]);
 
   if (!slide) {
     return null;

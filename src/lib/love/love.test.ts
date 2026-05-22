@@ -40,6 +40,22 @@ describe("love presentation generation", () => {
     expect(first.some((slide) => slide.imageAssetId === "asset_1")).toBe(true);
   });
 
+  test("adds local compatibility scoring and same-name self-love copy", () => {
+    const slides = createSlides({
+      senderName: "Sam",
+      recipientName: "sam",
+      vibe: "boardroom",
+      seed: "fixed",
+      assets: [],
+    });
+
+    expect(slides[0]?.title).toBe("This appears to be self-love");
+    expect(slides[1]?.title).toMatch(
+      /^Compatibility is \d{2}\.\d% and refusing to be subtle$/,
+    );
+    expect(slides[1]?.verdict).toBe("Self-love status: valid.");
+  });
+
   test("validates names without accepting markup characters", () => {
     expect(() =>
       creatorFieldsSchema.parse({

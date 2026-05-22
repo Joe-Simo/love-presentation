@@ -1,130 +1,214 @@
 "use client";
 
+import { gsap } from "gsap";
 import {
-  ArrowUpRightIcon,
+  ArrowRightIcon,
+  Building2Icon,
   CopyIcon,
-  ExternalLinkIcon,
-  HeartHandshakeIcon,
+  HeartIcon,
   ImageIcon,
-  LinkIcon,
-  PlusIcon,
-  RotateCcwIcon,
+  Link2Icon,
+  LockKeyholeIcon,
+  SendIcon,
   SparklesIcon,
-  XIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { MAX_IMAGE_URLS } from "@/lib/love/config";
-import { createSlides, VIBE_OPTIONS } from "@/lib/love/phrases";
+import { PaperAmbientScene } from "@/components/love/paper-ambient-scene";
 import {
   createSharePayload,
   encodeSharePayload,
-  presentationFromPayload,
-  sanitizeImageUrls,
 } from "@/lib/love/share";
-import type {
-  PresentationAsset,
-  PresentationVibe,
-  PublicPresentation,
-} from "@/lib/love/types";
-import { PresentationPlayer } from "@/components/love/presentation-player";
+import type { PresentationVibe } from "@/lib/love/types";
+import { cn } from "@/lib/utils";
 
 type ShareState = {
   shareUrl: string;
-  presentation: PublicPresentation;
 };
 
+type PreviewSlide = {
+  kicker: string;
+  title: string;
+  lines: string[];
+  verdict: string;
+};
+
+const toneOptions: Array<{
+  value: PresentationVibe;
+  label: string;
+  description: string;
+  icon: typeof Building2Icon;
+}> = [
+  {
+    value: "boardroom",
+    label: "Boardroom",
+    description: "Very official.",
+    icon: Building2Icon,
+  },
+  {
+    value: "chaos",
+    label: "Chaotic",
+    description: "A little unhinged.",
+    icon: SendIcon,
+  },
+  {
+    value: "sincere",
+    label: "Soft Roast",
+    description: "Sweet, but honest.",
+    icon: HeartIcon,
+  },
+];
+
+const previewSlides: PreviewSlide[] = [
+  {
+    kicker: "Opening Statement",
+    title: "Normal presentation.",
+    lines: [
+      "Please ignore the emotional bias in the room.",
+      "The agenda is simple. The feelings are not.",
+      "All claims have been reviewed by nobody neutral.",
+    ],
+    verdict: "Proceed with caution.",
+  },
+  {
+    kicker: "Risk Memo",
+    title: "Presenter compromised.",
+    lines: [
+      "Objectivity left shortly after the first smile.",
+      "Further analysis may contain affectionate language.",
+      "Legal has asked everyone to calm down.",
+    ],
+    verdict: "Bias confirmed.",
+  },
+  {
+    kicker: "Exhibit A",
+    title: "Suspicious chemistry.",
+    lines: [
+      "They laugh at the same dumb stuff.",
+      "They finish each other's sentences.",
+      "The science is not explaining this one.",
+    ],
+    verdict: "Highly suspicious.",
+  },
+  {
+    kicker: "Forecast",
+    title: "Feelings trend upward.",
+    lines: [
+      "Smiling has increased beyond reasonable levels.",
+      "Casual mentions now require formal disclosure.",
+      "The graph is dramatic and refuses to apologize.",
+    ],
+    verdict: "Growth looks dangerous.",
+  },
+  {
+    kicker: "Compliance",
+    title: "Leaving is not advised.",
+    lines: [
+      "The committee reviewed alternative options.",
+      "None of them had this much eye contact.",
+      "A follow-up meeting has been emotionally scheduled.",
+    ],
+    verdict: "Stay adorable.",
+  },
+  {
+    kicker: "Final Ruling",
+    title: "Guilty of being cute.",
+    lines: [
+      "The court has examined the evidence.",
+      "The objections were mostly blushing.",
+      "Sentencing will include more time together.",
+    ],
+    verdict: "Approved, unfortunately.",
+  },
+  {
+    kicker: "Appendix",
+    title: "No further questions.",
+    lines: [
+      "The deck has made its case.",
+      "The room is now emotionally unwell.",
+      "Please collect your private link on the way out.",
+    ],
+    verdict: "Case closed.",
+  },
+];
+
 export function LoveCreator() {
-  const [senderName, setSenderName] = useState("");
-  const [recipientName, setRecipientName] = useState("");
+  const [senderName, setSenderName] = useState("Joseph");
+  const [recipientName, setRecipientName] = useState("Antoneta");
   const [vibe, setVibe] = useState<PresentationVibe>("boardroom");
-  const [imageUrls, setImageUrls] = useState([""]);
+  const [imageUrl, setImageUrl] = useState("");
   const [share, setShare] = useState<ShareState | null>(null);
-  const [previewCreatedAt] = useState(() => new Date());
+  const [previewIndex, setPreviewIndex] = useState(2);
+  const rootRef = useRef<HTMLElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const cardContentRef = useRef<HTMLDivElement>(null);
+  const stampRef = useRef<HTMLDivElement>(null);
 
-  const previewImageUrls = useMemo(() => {
-    try {
-      return sanitizeImageUrls(imageUrls);
-    } catch {
-      return imageUrls
-        .map((url) => url.trim())
-        .filter((url) => url.startsWith("https://"))
-        .slice(0, MAX_IMAGE_URLS);
-    }
-  }, [imageUrls]);
+  const preview = previewSlides[previewIndex] ?? previewSlides[2];
+  const previewNumber = String(previewIndex + 1).padStart(2, "0");
+  const isSelfLove =
+    normalizeName(senderName) !== "" &&
+    normalizeName(senderName) === normalizeName(recipientName);
+  const canCreate =
+    senderName.trim().length > 0 && recipientName.trim().length > 0;
 
-  const previewAssets: PresentationAsset[] = useMemo(
-    () =>
-      previewImageUrls.map((url, index) => ({
-        id: `preview-${index}`,
-        url,
-        width: 1200,
-        height: 1500,
-      })),
-    [previewImageUrls],
-  );
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const card = cardRef.current;
+    if (!root || !card) return;
 
-  const previewPresentation = useMemo<PublicPresentation>(() => {
-    const sender = senderName.trim() || "Sender";
-    const recipient = recipientName.trim() || "Recipient";
-    const seed = `${sender}:${recipient}:${vibe}:${previewImageUrls.join(",")}`;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
-    return {
-      id: "preview",
-      senderName: sender,
-      recipientName: recipient,
-      vibe,
-      seed,
-      createdAt: previewCreatedAt.toISOString(),
-      assets: previewAssets,
-      slides: createSlides({
-        senderName: sender,
-        recipientName: recipient,
-        vibe,
-        seed,
-        assets: previewAssets,
-      }),
+    if (reducedMotion) return;
+
+    const context = gsap.context(() => {
+      gsap.fromTo(
+        "[data-reveal]",
+        { autoAlpha: 0, y: 18 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.75,
+          ease: "power3.out",
+          stagger: 0.055,
+        },
+      );
+
+      gsap.to(card, {
+        y: -8,
+        rotate: -0.65,
+        duration: 3.8,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+      });
+    }, root);
+
+    return () => context.revert();
+  }, []);
+
+  useLayoutEffect(() => {
+    const target = cardContentRef.current;
+    if (!target) return;
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (reducedMotion) return;
+
+    const animation = gsap.fromTo(
+      target,
+      { autoAlpha: 0, y: 12 },
+      { autoAlpha: 1, y: 0, duration: 0.42, ease: "power3.out" },
+    );
+
+    return () => {
+      animation.kill();
     };
-  }, [
-    previewAssets,
-    previewCreatedAt,
-    previewImageUrls,
-    recipientName,
-    senderName,
-    vibe,
-  ]);
-
-  function setImageUrl(index: number, value: string) {
-    setImageUrls((current) =>
-      current.map((url, currentIndex) =>
-        currentIndex === index ? value : url,
-      ),
-    );
-    setShare(null);
-  }
-
-  function addImageUrl() {
-    setImageUrls((current) =>
-      current.length >= MAX_IMAGE_URLS ? current : [...current, ""],
-    );
-  }
-
-  function removeImageUrl(index: number) {
-    setImageUrls((current) => {
-      const next = current.filter((_, currentIndex) => currentIndex !== index);
-      return next.length > 0 ? next : [""];
-    });
-    setShare(null);
-  }
+  }, [previewIndex]);
 
   function createPresentation() {
     try {
@@ -132,7 +216,7 @@ export function LoveCreator() {
         senderName,
         recipientName,
         vibe,
-        imageUrls,
+        imageUrls: [imageUrl],
         seed: crypto.randomUUID(),
       });
       const token = encodeSharePayload(payload);
@@ -141,8 +225,8 @@ export function LoveCreator() {
 
       setShare({
         shareUrl: shareUrl.toString(),
-        presentation: presentationFromPayload(payload),
       });
+      animateStamp();
       toast.success("Private link created.");
     } catch {
       toast.error("Use names and optional HTTPS image URLs only.");
@@ -160,267 +244,304 @@ export function LoveCreator() {
     }
   }
 
-  const usedImageUrls = imageUrls.filter((url) => url.trim().length > 0).length;
-  const canCreate =
-    senderName.trim().length > 0 && recipientName.trim().length > 0;
-  const activePresentation = share?.presentation ?? previewPresentation;
+  function animateStamp() {
+    const stamp = stampRef.current;
+    if (!stamp) return;
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (reducedMotion) return;
+
+    gsap.fromTo(
+      stamp,
+      { scale: 1.42, rotate: -16, y: -32, autoAlpha: 0 },
+      {
+        scale: 1,
+        rotate: -7,
+        y: 0,
+        autoAlpha: 1,
+        duration: 0.52,
+        ease: "back.out(2.1)",
+      },
+    );
+  }
+
+  function showNextPreview() {
+    setPreviewIndex((current) => (current + 1) % previewSlides.length);
+    animateStamp();
+  }
 
   return (
-    <main className="min-h-dvh bg-[#f4f1ea] text-[#171714]">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-4 pb-5 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-30 -mx-4 border-b bg-[#f4f1ea]/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className="mx-auto flex max-w-[1500px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <a
-              href="#builder"
-              className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] sm:text-sm sm:tracking-[0.18em]"
-            >
-              <HeartHandshakeIcon data-icon="inline-start" />
-              Love Presentation
-            </a>
-            <nav className="grid grid-cols-3 rounded-lg border bg-[#fffdf8]/80 p-1 text-sm shadow-sm sm:flex sm:items-center sm:gap-1">
-              <a
-                href="#builder"
-                className="rounded-md px-3 py-1.5 text-center text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              >
-                Build
-              </a>
-              <a
-                href="#preview"
-                className="rounded-md px-3 py-1.5 text-center text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              >
-                Preview
-              </a>
-              <a
-                href="#share"
-                className="rounded-md px-3 py-1.5 text-center text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              >
-                Share
-              </a>
-            </nav>
+    <main ref={rootRef} className="love-home">
+      <header className="love-nav" data-reveal>
+        <a className="love-brand" href="#top" aria-label="Love Presentation">
+          <HeartIcon className="love-brand-icon" fill="none" />
+          <span>Love Presentation</span>
+        </a>
+        <nav className="love-nav-links" aria-label="Primary navigation">
+          <a href="#how">How it works</a>
+          <a href="#samples">Samples</a>
+          <a href="#about">About</a>
+        </nav>
+        <a
+          className="love-source"
+          href="https://github.com/Joe-Simo/love-presentation"
+          rel="noreferrer"
+          target="_blank"
+        >
+          <GithubMark />
+          <span>Open Source</span>
+        </a>
+      </header>
+
+      <section id="top" className="love-hero" aria-label="Love deck creator">
+        <div className="love-copy">
+          <div className="love-eyebrow" data-reveal>
+            <span>A very serious presentation</span>
+            <span>About a very unserious amount of love.</span>
           </div>
-        </header>
 
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(320px,430px)_minmax(0,1fr)]">
-          <section
-            id="builder"
-            className="scroll-mt-28 overflow-hidden rounded-lg border bg-[#fffdf8] shadow-[0_24px_80px_rgba(22,20,17,0.08)] lg:sticky lg:top-[76px]"
+          <h1 className="love-title" data-reveal>
+            <span>Make a love deck.</span>
+            <span>Try not to look</span>
+            <em>desperate.</em>
+          </h1>
+
+          <p className="love-subtitle" data-reveal>
+            A tiny free app for making private slideshow links about why two
+            people are suspiciously perfect together.
+          </p>
+
+          <form
+            className="love-form"
+            data-reveal
+            onSubmit={(event) => {
+              event.preventDefault();
+              createPresentation();
+            }}
           >
-            <div className="border-b p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#b94735]">
-                Creator
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold leading-[0.95] tracking-normal">
-                Build the case.
-              </h1>
-              <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-                No account. No uploads. Just names, a tone, optional image URLs,
-                and one private hash link.
-              </p>
+            <div className="love-name-grid">
+              <label className="love-field">
+                <span>From</span>
+                <input
+                  value={senderName}
+                  onChange={(event) => {
+                    setSenderName(event.target.value);
+                    setShare(null);
+                  }}
+                  maxLength={48}
+                  autoComplete="name"
+                />
+              </label>
+              <label className="love-field">
+                <span>To</span>
+                <input
+                  value={recipientName}
+                  onChange={(event) => {
+                    setRecipientName(event.target.value);
+                    setShare(null);
+                  }}
+                  maxLength={48}
+                  autoComplete="off"
+                />
+              </label>
             </div>
 
-            <div className="p-5">
-              <FieldGroup>
-                <Field>
-                  <div className="flex items-center justify-between">
-                    <FieldLabel htmlFor="senderName">Names</FieldLabel>
-                    <span className="text-xs text-muted-foreground">
-                      {senderName.trim().length > 0 &&
-                      recipientName.trim().length > 0
-                        ? "Ready"
-                        : "Required"}
-                    </span>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                    <Input
-                      id="senderName"
-                      value={senderName}
-                      onChange={(event) => {
-                        setSenderName(event.target.value);
+            <fieldset className="love-tone-field">
+              <legend>Tone</legend>
+              <div className="love-tone-grid">
+                {toneOptions.map((option) => {
+                  const Icon = option.icon;
+                  const selected = vibe === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={cn("love-tone", selected && "is-selected")}
+                      aria-pressed={selected}
+                      onClick={() => {
+                        setVibe(option.value);
                         setShare(null);
                       }}
-                      maxLength={48}
-                      placeholder="Sender"
-                      className="h-11 bg-background"
-                    />
-                    <Input
-                      id="recipientName"
-                      value={recipientName}
-                      onChange={(event) => {
-                        setRecipientName(event.target.value);
-                        setShare(null);
-                      }}
-                      maxLength={48}
-                      placeholder="Recipient"
-                      className="h-11 bg-background"
-                    />
-                  </div>
-                </Field>
-
-                <Field>
-                  <FieldLabel>Presentation energy</FieldLabel>
-                  <div className="grid gap-2">
-                    {VIBE_OPTIONS.map((option, index) => (
-                      <Button
-                        key={option.value}
-                        type="button"
-                        variant={vibe === option.value ? "default" : "outline"}
-                        aria-pressed={vibe === option.value}
-                        className="h-auto justify-start whitespace-normal py-3 text-left"
-                        onClick={() => {
-                          setVibe(option.value);
-                          setShare(null);
-                        }}
-                      >
-                        <span className="mr-1 flex size-6 shrink-0 items-center justify-center rounded-md border border-current/20 text-xs tabular-nums">
-                          {index + 1}
-                        </span>
-                        <span className="flex flex-col gap-0.5">
-                          <span>{option.label}</span>
-                          <span className="text-xs font-normal opacity-70">
-                            {option.description}
-                          </span>
-                        </span>
-                      </Button>
-                    ))}
-                  </div>
-                </Field>
-
-                <Field>
-                  <div className="flex items-center justify-between">
-                    <FieldLabel>Image URLs</FieldLabel>
-                    <span className="text-xs text-muted-foreground">
-                      {usedImageUrls}/{MAX_IMAGE_URLS}
-                    </span>
-                  </div>
-                  <div className="grid gap-2">
-                    {imageUrls.map((url, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          type="url"
-                          value={url}
-                          onChange={(event) =>
-                            setImageUrl(index, event.target.value)
-                          }
-                          placeholder="https://example.com/photo.jpg"
-                          className="h-10 bg-background"
-                        />
-                        {imageUrls.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-lg"
-                            aria-label="Remove image URL"
-                            onClick={() => removeImageUrl(index)}
-                          >
-                            <XIcon />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    {imageUrls.length < MAX_IMAGE_URLS && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addImageUrl}
-                        className="w-full"
-                      >
-                        <PlusIcon data-icon="inline-start" />
-                        Add image URL
-                      </Button>
-                    )}
-                  </div>
-                  <FieldDescription>
-                    Optional HTTPS images appear as evidence slides.
-                  </FieldDescription>
-                </Field>
-
-                <Separator />
-
-                <div id="share" className="flex scroll-mt-28 flex-col gap-3">
-                  <Button
-                    disabled={!canCreate}
-                    onClick={createPresentation}
-                    className="h-11 w-full"
-                  >
-                    <LinkIcon data-icon="inline-start" />
-                    Create private link
-                  </Button>
-
-                  {share ? (
-                    <div className="flex flex-col gap-3 border-t pt-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium">Share link ready</p>
-                        <span className="inline-flex items-center gap-1 rounded-md bg-[#dff2e6] px-2 py-1 text-xs font-medium text-[#1f5b37]">
-                          <SparklesIcon data-icon="inline-start" />
-                          Private hash
-                        </span>
-                      </div>
-                      <p className="truncate rounded-md border bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
-                        {share.shareUrl}
-                      </p>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Button variant="outline" onClick={copyShareLink}>
-                          <CopyIcon data-icon="inline-start" />
-                          Copy
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            window.open(
-                              share.shareUrl,
-                              "_blank",
-                              "noopener,noreferrer",
-                            )
-                          }
-                        >
-                          <ExternalLinkIcon data-icon="inline-start" />
-                          Open
-                        </Button>
-                        <Button variant="outline" onClick={() => setShare(null)}>
-                          <RotateCcwIcon data-icon="inline-start" />
-                          Reset
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-2">
-                        <ImageIcon data-icon="inline-start" />
-                        URL images only
+                    >
+                      <span className="love-radio" aria-hidden="true">
+                        {selected ? <span /> : null}
                       </span>
-                      <span className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-2">
-                        <ArrowUpRightIcon data-icon="inline-start" />
-                        Opens at /p#
+                      <Icon aria-hidden="true" />
+                      <span className="love-tone-copy">
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
                       </span>
-                    </div>
-                  )}
-                </div>
-              </FieldGroup>
-            </div>
-          </section>
-
-          <section id="preview" className="min-w-0 scroll-mt-28">
-            <div className="mb-3 flex items-center justify-between gap-3 px-1">
-              <div>
-                <p className="text-sm font-medium">Live deck</p>
-                <p className="text-xs text-muted-foreground">
-                  {activePresentation.slides.length} slides generated locally
-                </p>
+                    </button>
+                  );
+                })}
               </div>
-              <a
-                href="#builder"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
-              >
-                Edit
-              </a>
+            </fieldset>
+
+            <label className="love-field love-image-field">
+              <span>
+                Optional image URL <small>(https://...)</small>
+              </span>
+              <span className="love-image-input">
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(event) => {
+                    setImageUrl(event.target.value);
+                    setShare(null);
+                  }}
+                  placeholder="https://example.com/your-photo.jpg"
+                />
+                <ImageIcon aria-hidden="true" />
+              </span>
+            </label>
+
+            <button
+              className="love-submit"
+              type="submit"
+              disabled={!canCreate}
+            >
+              <span>Create private link</span>
+              <ArrowRightIcon aria-hidden="true" />
+            </button>
+
+            <div className="love-privacy">
+              <LockKeyholeIcon aria-hidden="true" />
+              <span>
+                No account. No uploads. No database.{" "}
+                <strong>No committee approval.</strong>
+              </span>
             </div>
-            <PresentationPlayer
-              presentation={activePresentation}
-              className="shadow-[0_30px_100px_rgba(22,20,17,0.12)]"
-            />
-          </section>
+
+            {isSelfLove ? (
+              <p className="love-self-note">
+                This appears to be self-love. Valid.
+              </p>
+            ) : null}
+
+            {share ? (
+              <div className="love-share-result" role="status">
+                <p>{share.shareUrl}</p>
+                <button type="button" onClick={copyShareLink}>
+                  <CopyIcon aria-hidden="true" />
+                  Copy
+                </button>
+                <a href={share.shareUrl} target="_blank" rel="noreferrer">
+                  Open
+                </a>
+              </div>
+            ) : null}
+          </form>
         </div>
-      </div>
+
+        <div className="love-preview-zone" data-reveal>
+          <PaperAmbientScene />
+          <HeartIcon className="love-floating-heart" aria-hidden="true" />
+          <div className="love-card-wrap">
+            <article ref={cardRef} className="love-preview-card">
+              <div className="love-card-meta">
+                <span>
+                  Slide <strong>{previewNumber}</strong> / 07
+                </span>
+                <span>Case file #2025-LOVE-001</span>
+              </div>
+
+              <div ref={cardContentRef} aria-live="polite">
+                <p className="love-card-kicker">{preview.kicker}</p>
+                <h2>{preview.title}</h2>
+                <div className="love-card-rule" />
+
+                <div className="love-card-body">
+                  {preview.lines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+
+                <div className="love-card-verdict">
+                  <p>Verdict:</p>
+                  <strong>{preview.verdict}</strong>
+                </div>
+              </div>
+
+              <div ref={stampRef} className="love-stamp" aria-hidden="true">
+                <span>Approved,</span>
+                <span>unfortunately</span>
+                <HeartIcon />
+              </div>
+            </article>
+
+            <button
+              type="button"
+              className="love-next"
+              aria-label="Preview next slide"
+              onClick={showNextPreview}
+            >
+              <ArrowRightIcon aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="love-dots" aria-hidden="true">
+            {Array.from({ length: 7 }, (_, index) => (
+              <span
+                key={index}
+                className={index === previewIndex ? "is-active" : ""}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="love-notes" aria-label="Project details">
+        <div id="how" className="love-note" data-reveal>
+          <LockKeyholeIcon aria-hidden="true" />
+          <div>
+            <h2>Private by design</h2>
+            <p>Your deck lives in the link. We don&apos;t store your love crimes.</p>
+          </div>
+        </div>
+        <div id="samples" className="love-note" data-reveal>
+          <Link2Icon aria-hidden="true" />
+          <div>
+            <h2>Share anywhere</h2>
+            <p>Send the link and prepare for smiles, tears, or negotiations.</p>
+          </div>
+        </div>
+        <div id="about" className="love-note" data-reveal>
+          <SparklesIcon aria-hidden="true" />
+          <div>
+            <h2>Yours, not theirs</h2>
+            <p>Edit anytime. Regenerate. Make it more dramatic.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer className="love-footer" data-reveal>
+        <p>
+          Made with <HeartIcon aria-hidden="true" /> by one emotionally
+          compromised developer.
+        </p>
+        <p>Open source on GitHub. Fork it, remix it, accuse someone of being adorable.</p>
+      </footer>
     </main>
+  );
+}
+
+function normalizeName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function GithubMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="love-github"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M12 2C6.48 2 2 6.59 2 12.25c0 4.52 2.86 8.35 6.83 9.7.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.33 9.33 0 0 1 12 6.98c.85 0 1.7.12 2.5.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.06 10.06 0 0 0 22 12.25C22 6.59 17.52 2 12 2Z" />
+    </svg>
   );
 }
