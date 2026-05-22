@@ -1,7 +1,13 @@
 {
-  "name": "perfect",
+  "name": "love-presentation",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "license": "MIT",
+  "homepage": "https://lovepresentation.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Joe-Simo/love-presentation.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

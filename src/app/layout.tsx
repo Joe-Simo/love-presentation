@@ -14,11 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://lovepresentation.com"),
   title: "Love Presentation",
   description: "Make a funny private slideshow for someone suspiciously compatible.",
-  robots: {
-    index: false,
-    follow: false,
+  openGraph: {
+    title: "Love Presentation",
+    description:
+      "Make a funny private slideshow for someone suspiciously compatible.",
+    url: "https://lovepresentation.com",
+    siteName: "Love Presentation",
+    type: "website",
   },
 };
 

@@ -1,6 +1,8 @@
 # Love Presentation
 
-A minimalist Next.js app for making funny private slideshow links. It uses Bun, App Router, Tailwind CSS, shadcn/ui primitives, Three.js, GSAP, and Geist.
+A minimalist Next.js app for making funny private slideshow links about why two people are suspiciously perfect together.
+
+Live site: [lovepresentation.com](https://lovepresentation.com)
 
 ## Commands
 
@@ -18,6 +20,12 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 Share links use `/p#...` hash fragments with self-contained payloads. The app does not upload, store, or proxy user photos; optional image URLs must be HTTPS and are loaded directly by the recipient browser with `no-referrer`.
 
+Because the slideshow data lives in the URL hash, the share token is not sent to the server during normal HTTP requests. Anyone with the full link can view the deck, so users should treat links as private but shareable.
+
 ## Deploy
 
 Deploy on Vercel with the default Next.js build settings.
+
+## License
+
+MIT
