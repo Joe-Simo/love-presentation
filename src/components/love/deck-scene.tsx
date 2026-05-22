@@ -27,40 +27,34 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
       alpha: true,
       antialias: true,
     });
-    renderer.setClearColor("#f7f7f4", 1);
+    renderer.setClearColor("#f8f4ec", 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#f7f7f4");
 
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.set(0, 0.4, 7);
 
     const group = new THREE.Group();
-    group.position.set(0.9, -0.1, 0);
-    group.rotation.set(0.02, -0.12, 0.02);
+    group.position.set(1.25, -0.02, 0);
+    group.rotation.set(0.02, -0.18, 0.02);
     scene.add(group);
 
     const ambient = new THREE.AmbientLight("#ffffff", 1.7);
-    const directional = new THREE.DirectionalLight("#ffffff", 2.4);
+    const directional = new THREE.DirectionalLight("#fff6e8", 2.6);
     directional.position.set(3, 4, 4);
     scene.add(ambient, directional);
 
-    const cardGeometry = new THREE.BoxGeometry(4.2, 2.72, 0.045);
+    const cardGeometry = new THREE.BoxGeometry(3.8, 2.45, 0.055);
     const activeMaterial = new THREE.MeshStandardMaterial({
       color: "#ffffff",
       roughness: 0.78,
       metalness: 0.03,
     });
     const restingMaterial = new THREE.MeshStandardMaterial({
-      color: "#e7e4dc",
+      color: "#d9d2c3",
       roughness: 0.78,
       metalness: 0.03,
-    });
-    const railGeometry = new THREE.BoxGeometry(4.55, 0.08, 0.22);
-    const railMaterial = new THREE.MeshStandardMaterial({
-      color: "#1f1f1d",
-      roughness: 0.65,
     });
 
     const cardCount = Math.max(total, 1);
@@ -79,11 +73,6 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
       group.add(mesh);
       return mesh;
     });
-
-    const rail = new THREE.Mesh(railGeometry, railMaterial);
-    rail.position.set(0, -1.58, -0.28);
-    rail.rotation.set(-0.08, 0, 0);
-    group.add(rail);
 
     const resize = () => {
       const width = canvas.clientWidth;
@@ -138,8 +127,6 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
       cardGeometry.dispose();
       activeMaterial.dispose();
       restingMaterial.dispose();
-      railGeometry.dispose();
-      railMaterial.dispose();
       renderer.dispose();
     };
   }, [total]);

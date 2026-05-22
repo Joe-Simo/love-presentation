@@ -3,7 +3,12 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { gsap } from "gsap";
-import { ArrowLeftIcon, ArrowRightIcon, LinkIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BadgeCheckIcon,
+  LinkIcon,
+} from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +60,8 @@ function PresentationPlayerDeck({
     ? presentation.assets.find((asset) => asset.id === slide.imageAssetId)
     : undefined;
   const visibleImage = image && !failedImageIds.has(image.id) ? image : undefined;
+  const senderInitial = presentation.senderName.slice(0, 1).toUpperCase();
+  const recipientInitial = presentation.recipientName.slice(0, 1).toUpperCase();
   const progress =
     presentation.slides.length > 1
       ? (safeActiveIndex / (presentation.slides.length - 1)) * 100
@@ -88,52 +95,77 @@ function PresentationPlayerDeck({
   return (
     <section
       className={cn(
-        "relative isolate min-h-[560px] overflow-hidden rounded-lg border bg-[#f7f7f4]",
+        "relative isolate min-h-[680px] overflow-hidden rounded-lg border bg-[#f8f4ec]",
         shared && "min-h-dvh rounded-none border-0",
         className,
       )}
     >
-      <div className="absolute inset-0 opacity-95">
+      <div className="absolute inset-0 opacity-70">
         <DeckScene
           activeIndex={safeActiveIndex}
           total={presentation.slides.length}
         />
       </div>
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#f7f7f4_0%,rgba(247,247,244,0.92)_34%,rgba(247,247,244,0.16)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#f8f4ec_0%,rgba(248,244,236,0.96)_37%,rgba(248,244,236,0.36)_100%)]" />
+      <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,253,248,0.95),rgba(255,253,248,0))]" />
 
-      <div className="relative z-10 flex min-h-[inherit] flex-col justify-between p-5 sm:p-7">
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <div className="relative z-10 flex min-h-[inherit] flex-col justify-between p-4 sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <Badge variant="outline" className="rounded-md bg-background/80">
             {presentation.senderName} for {presentation.recipientName}
           </Badge>
-          <span className="flex items-center gap-1.5">
-            <LinkIcon data-icon="inline-start" />
-            No upload storage
-          </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              {presentation.slides.map((currentSlide, index) => (
+                <button
+                  key={currentSlide.id}
+                  type="button"
+                  aria-label={`Go to slide ${index + 1}`}
+                  aria-current={safeActiveIndex === index ? "step" : undefined}
+                  onClick={() => setActiveIndex(index)}
+                  className={cn(
+                    "size-2 rounded-full border border-[#171714]/25 bg-background transition-all sm:size-2.5",
+                    safeActiveIndex === index &&
+                      "w-6 border-[#171714] bg-[#171714] sm:w-7",
+                  )}
+                />
+              ))}
+            </div>
+            <span className="flex items-center gap-1.5">
+              <LinkIcon data-icon="inline-start" />
+              Hash link
+            </span>
+          </div>
         </div>
 
         <div
           ref={slideRef}
-          className="my-10 grid max-w-5xl items-center gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(280px,0.72fr)]"
+          className="grid flex-1 items-center gap-7 py-6 sm:py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(260px,0.62fr)] xl:gap-12"
         >
-          <article className="max-w-2xl">
-            <p className="mb-4 text-xs font-medium uppercase text-[#c44b37]">
+          <article className="max-w-3xl">
+            <p className="mb-4 text-xs font-medium uppercase tracking-[0.16em] text-[#b94735]">
               {slide.kicker}
             </p>
-            <h1 className="text-balance text-4xl font-semibold leading-[0.96] tracking-normal text-[#171714] sm:text-6xl lg:text-7xl">
+            <h1
+              className={cn(
+                "max-w-[12ch] text-balance text-4xl font-semibold leading-[0.94] tracking-normal text-[#171714] sm:text-5xl xl:text-6xl",
+                shared && "sm:text-6xl xl:text-7xl",
+              )}
+            >
               {slide.title}
             </h1>
             <p className="mt-6 max-w-xl text-pretty text-base leading-7 text-[#4d4c47] sm:text-lg">
               {slide.body}
             </p>
-            <p className="mt-7 inline-flex max-w-xl rounded-md border bg-background/85 px-3 py-2 text-sm font-medium text-[#171714] shadow-sm">
+            <p className="mt-7 inline-flex max-w-xl items-center gap-1.5 rounded-md border bg-[#fffdf8]/90 px-3 py-2 text-sm font-medium text-[#171714] shadow-sm">
+              <BadgeCheckIcon data-icon="inline-start" />
               {slide.verdict}
             </p>
           </article>
 
           <div className="relative min-h-[250px]">
             {visibleImage ? (
-              <div className="relative aspect-[4/5] max-h-[430px] overflow-hidden rounded-lg border bg-background shadow-sm">
+              <div className="relative mx-auto aspect-[4/5] w-full max-w-[280px] overflow-hidden rounded-lg border bg-background shadow-[0_22px_70px_rgba(22,20,17,0.14)] sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
                 <img
                   src={visibleImage.url}
                   alt={`Photo evidence for ${presentation.recipientName}`}
@@ -151,14 +183,37 @@ function PresentationPlayerDeck({
                 />
               </div>
             ) : (
-              <div className="flex aspect-[4/5] max-h-[430px] items-center justify-center rounded-lg border bg-background/55 p-6 text-center text-sm text-muted-foreground shadow-sm">
-                The evidence board is warming up.
+              <div className="mx-auto flex aspect-[4/5] w-full max-w-[280px] flex-col justify-between rounded-lg border bg-[#171714] p-5 text-[#fffdf8] shadow-[0_22px_70px_rgba(22,20,17,0.18)] sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-[#fffdf8]/60">
+                  <span>LP-01</span>
+                  <span>{slide.kicker}</span>
+                </div>
+                <div className="text-center">
+                  <p className="text-[4.5rem] font-semibold leading-none tracking-normal sm:text-[6rem]">
+                    {senderInitial}
+                    <span className="text-[#d95d48]">+</span>
+                    {recipientInitial}
+                  </p>
+                  <p className="mt-3 text-sm text-[#fffdf8]/70">
+                    compatibility memo
+                  </p>
+                </div>
+                <div className="grid gap-2 text-sm">
+                  <div className="flex items-center justify-between border-t border-white/15 pt-2">
+                    <span className="text-[#fffdf8]/60">chemistry</span>
+                    <span>validated</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-white/15 pt-2">
+                    <span className="text-[#fffdf8]/60">drama</span>
+                    <span>tasteful</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="rounded-lg border bg-[#fffdf8]/88 p-3 shadow-sm backdrop-blur">
           <Progress value={progress}>
             <ProgressLabel>
               Slide {safeActiveIndex + 1} of {presentation.slides.length}
@@ -168,7 +223,7 @@ function PresentationPlayerDeck({
             </span>
           </Progress>
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="mt-3 flex items-center justify-between gap-3">
             <Button
               variant="outline"
               onClick={() => setActiveIndex(Math.max(0, safeActiveIndex - 1))}
