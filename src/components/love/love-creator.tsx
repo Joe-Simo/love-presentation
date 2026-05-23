@@ -19,7 +19,12 @@ import {
   createSharePayload,
   encodeSharePayload,
 } from "@/lib/love/share";
-import type { PresentationVibe } from "@/lib/love/types";
+import type {
+  DeckLengthChoice,
+  DramaLevel,
+  LoveOccasion,
+  PresentationVibe,
+} from "@/lib/love/types";
 import { cn } from "@/lib/utils";
 
 type ShareState = {
@@ -57,6 +62,39 @@ const toneOptions: Array<{
     description: "Sweet, but honest.",
     icon: HeartIcon,
   },
+];
+
+const deckLengthOptions: Array<{
+  value: DeckLengthChoice;
+  label: string;
+}> = [
+  { value: "random", label: "Random 5-10" },
+  { value: "5", label: "5 slides" },
+  { value: "6", label: "6 slides" },
+  { value: "7", label: "7 slides" },
+  { value: "8", label: "8 slides" },
+  { value: "9", label: "9 slides" },
+  { value: "10", label: "10 slides" },
+];
+
+const dramaOptions: Array<{
+  value: DramaLevel;
+  label: string;
+}> = [
+  { value: "modest", label: "Modest" },
+  { value: "dramatic", label: "Dramatic" },
+  { value: "unwell", label: "Unwell" },
+];
+
+const occasionOptions: Array<{
+  value: LoveOccasion;
+  label: string;
+}> = [
+  { value: "just-because", label: "Just because" },
+  { value: "anniversary", label: "Anniversary" },
+  { value: "date-night", label: "Date night" },
+  { value: "birthday", label: "Birthday" },
+  { value: "apology", label: "Apology" },
 ];
 
 const previewSlides: PreviewSlide[] = [
@@ -126,7 +164,7 @@ const previewSlides: PreviewSlide[] = [
     lines: [
       "The deck has made its case.",
       "The room is now emotionally unwell.",
-      "Please collect your private link on the way out.",
+      "Please collect your dramatic evidence on the way out.",
     ],
     verdict: "Case closed.",
   },
@@ -136,7 +174,11 @@ export function LoveCreator() {
   const [senderName, setSenderName] = useState("Joseph");
   const [recipientName, setRecipientName] = useState("Antoneta");
   const [vibe, setVibe] = useState<PresentationVibe>("boardroom");
-  const [imageUrl, setImageUrl] = useState("");
+  const [deckLength, setDeckLength] = useState<DeckLengthChoice>("random");
+  const [dramaLevel, setDramaLevel] = useState<DramaLevel>("dramatic");
+  const [occasion, setOccasion] = useState<LoveOccasion>("just-because");
+  const [insideJoke, setInsideJoke] = useState("");
+  const [imageUrlsText, setImageUrlsText] = useState("");
   const [share, setShare] = useState<ShareState | null>(null);
   const [previewIndex, setPreviewIndex] = useState(2);
   const rootRef = useRef<HTMLElement>(null);
@@ -166,23 +208,26 @@ export function LoveCreator() {
     const context = gsap.context(() => {
       gsap.fromTo(
         "[data-reveal]",
-        { autoAlpha: 0, y: 18 },
+        { autoAlpha: 0 },
         {
           autoAlpha: 1,
-          y: 0,
           duration: 0.75,
           ease: "power3.out",
           stagger: 0.055,
         },
       );
 
-      gsap.to(card, {
-        y: -8,
-        rotate: -0.65,
-        duration: 3.8,
-        ease: "sine.inOut",
-        repeat: -1,
-        yoyo: true,
+      const media = gsap.matchMedia();
+
+      media.add("(min-width: 761px)", () => {
+        gsap.to(card, {
+          y: -8,
+          rotate: -0.65,
+          duration: 3.8,
+          ease: "sine.inOut",
+          repeat: -1,
+          yoyo: true,
+        });
       });
     }, root);
 
@@ -216,7 +261,11 @@ export function LoveCreator() {
         senderName,
         recipientName,
         vibe,
-        imageUrls: [imageUrl],
+        deckLength,
+        dramaLevel,
+        occasion,
+        insideJoke,
+        imageUrls: splitImageUrls(imageUrlsText),
         seed: crypto.randomUUID(),
       });
       const token = encodeSharePayload(payload);
@@ -227,9 +276,9 @@ export function LoveCreator() {
         shareUrl: shareUrl.toString(),
       });
       animateStamp();
-      toast.success("Private link created.");
+      toast.success("Deck created.");
     } catch {
-      toast.error("Use names and optional HTTPS image URLs only.");
+      toast.error("Check the names and photo links.");
     }
   }
 
@@ -310,8 +359,8 @@ export function LoveCreator() {
           </h1>
 
           <p className="love-subtitle" data-reveal>
-            A tiny free app for making private slideshow links about why two
-            people are suspiciously perfect together.
+            A tiny app for turning your favorite person into a dramatic little
+            presentation.
           </p>
 
           <form
@@ -381,19 +430,85 @@ export function LoveCreator() {
               </div>
             </fieldset>
 
-            <label className="love-field love-image-field">
-              <span>
-                Optional image URL <small>(https://...)</small>
-              </span>
-              <span className="love-image-input">
+            <fieldset className="love-custom-field">
+              <legend>Customize</legend>
+              <div className="love-custom-grid">
+                <label className="love-field">
+                  <span>Slides</span>
+                  <select
+                    value={deckLength}
+                    onChange={(event) => {
+                      setDeckLength(event.target.value as DeckLengthChoice);
+                      setShare(null);
+                    }}
+                  >
+                    {deckLengthOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="love-field">
+                  <span>Occasion</span>
+                  <select
+                    value={occasion}
+                    onChange={(event) => {
+                      setOccasion(event.target.value as LoveOccasion);
+                      setShare(null);
+                    }}
+                  >
+                    {occasionOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="love-field">
+                  <span>Drama</span>
+                  <select
+                    value={dramaLevel}
+                    onChange={(event) => {
+                      setDramaLevel(event.target.value as DramaLevel);
+                      setShare(null);
+                    }}
+                  >
+                    {dramaOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="love-field love-wide-field">
+                <span>Inside joke</span>
                 <input
-                  type="url"
-                  value={imageUrl}
+                  value={insideJoke}
                   onChange={(event) => {
-                    setImageUrl(event.target.value);
+                    setInsideJoke(event.target.value);
                     setShare(null);
                   }}
-                  placeholder="https://example.com/your-photo.jpg"
+                  maxLength={96}
+                  placeholder="e.g. the soup incident"
+                />
+              </label>
+            </fieldset>
+
+            <label className="love-field love-image-field">
+              <span>
+                Photo links <small>(optional, up to 5)</small>
+              </span>
+              <span className="love-image-input">
+                <textarea
+                  value={imageUrlsText}
+                  onChange={(event) => {
+                    setImageUrlsText(event.target.value);
+                    setShare(null);
+                  }}
+                  placeholder="https://example.com/photo-one.jpg"
+                  rows={2}
                 />
                 <ImageIcon aria-hidden="true" />
               </span>
@@ -404,15 +519,15 @@ export function LoveCreator() {
               type="submit"
               disabled={!canCreate}
             >
-              <span>Create private link</span>
+              <span>Create the deck</span>
               <ArrowRightIcon aria-hidden="true" />
             </button>
 
             <div className="love-privacy">
               <LockKeyholeIcon aria-hidden="true" />
               <span>
-                No account. No uploads. No database.{" "}
-                <strong>No committee approval.</strong>
+                No sign-in. No overthinking.{" "}
+                <strong>Just the evidence.</strong>
               </span>
             </div>
 
@@ -424,7 +539,7 @@ export function LoveCreator() {
 
             {share ? (
               <div className="love-share-result" role="status">
-                <p>{share.shareUrl}</p>
+                <p>Your deck is ready.</p>
                 <button type="button" onClick={copyShareLink}>
                   <CopyIcon aria-hidden="true" />
                   Copy
@@ -498,22 +613,31 @@ export function LoveCreator() {
         <div id="how" className="love-note" data-reveal>
           <LockKeyholeIcon aria-hidden="true" />
           <div>
-            <h2>Private by design</h2>
-            <p>Your deck lives in the link. We don&apos;t store your love crimes.</p>
+            <h2>Made for one person</h2>
+            <p>
+              Build a tiny presentation that feels personal, specific, and
+              slightly too accurate.
+            </p>
           </div>
         </div>
         <div id="samples" className="love-note" data-reveal>
           <Link2Icon aria-hidden="true" />
           <div>
-            <h2>Share anywhere</h2>
-            <p>Send the link and prepare for smiles, tears, or negotiations.</p>
+            <h2>Send when ready</h2>
+            <p>
+              Deliver the deck and prepare for smiling, debating, or immediate
+              screenshots.
+            </p>
           </div>
         </div>
         <div id="about" className="love-note" data-reveal>
           <SparklesIcon aria-hidden="true" />
           <div>
-            <h2>Yours, not theirs</h2>
-            <p>Edit anytime. Regenerate. Make it more dramatic.</p>
+            <h2>Make it specific</h2>
+            <p>
+              Choose the tone, occasion, drama level, inside joke, and the
+              amount of evidence.
+            </p>
           </div>
         </div>
       </section>
@@ -523,7 +647,9 @@ export function LoveCreator() {
           Made with <HeartIcon aria-hidden="true" /> by one emotionally
           compromised developer.
         </p>
-        <p>Open source on GitHub. Fork it, remix it, accuse someone of being adorable.</p>
+        <p>
+          For when a text is too small and a full presentation is barely enough.
+        </p>
       </footer>
     </main>
   );
@@ -531,6 +657,13 @@ export function LoveCreator() {
 
 function normalizeName(name: string) {
   return name.trim().toLowerCase();
+}
+
+function splitImageUrls(value: string) {
+  return value
+    .split(/[\n,]+/)
+    .map((url) => url.trim())
+    .filter(Boolean);
 }
 
 function GithubMark() {

@@ -45,7 +45,7 @@ export function SharedPresentation() {
         <div className="max-w-md rounded-lg border bg-card p-5 shadow-sm">
           <h1 className="text-xl font-semibold">This deck is gone</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            The share link is missing or malformed.
+            This deck link is incomplete or broken.
           </p>
           <Button className="mt-5" render={<Link href="/" />}>
             Make a new one

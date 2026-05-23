@@ -128,8 +128,10 @@ function PresentationPlayerDeck({
   return (
     <section
       className={cn(
-        "relative isolate min-h-[680px] overflow-hidden rounded-lg border bg-[#f8f4ec]",
-        shared && "min-h-dvh rounded-none border-0",
+        "relative isolate rounded-lg border bg-[#f8f4ec]",
+        shared
+          ? "min-h-dvh overflow-x-hidden overflow-y-auto rounded-none border-0"
+          : "min-h-[680px] overflow-hidden",
         className,
       )}
     >
@@ -147,8 +149,8 @@ function PresentationPlayerDeck({
           <Badge variant="outline" className="rounded-md bg-background/80">
             {presentation.senderName} for {presentation.recipientName}
           </Badge>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3 sm:flex-none">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
               {presentation.slides.map((currentSlide, index) => (
                 <button
                   key={currentSlide.id}
@@ -159,29 +161,29 @@ function PresentationPlayerDeck({
                   className={cn(
                     "size-2 rounded-full border border-[#171714]/25 bg-background transition-all sm:size-2.5",
                     safeActiveIndex === index &&
-                      "w-6 border-[#171714] bg-[#171714] sm:w-7",
+                      "w-5 border-[#171714] bg-[#171714] sm:w-7",
                   )}
                 />
               ))}
             </div>
-            <span className="flex items-center gap-1.5">
+            <span className="hidden items-center gap-1.5 sm:flex">
               <LinkIcon data-icon="inline-start" />
-              Hash link
+              Shared deck
             </span>
           </div>
         </div>
 
         <div
           ref={slideRef}
-          className="grid flex-1 items-center gap-7 py-6 sm:py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(260px,0.62fr)] xl:gap-12"
+          className="grid flex-1 items-center gap-5 py-5 sm:gap-7 sm:py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(260px,0.62fr)] xl:gap-12"
         >
-          <article className="max-w-3xl">
+          <article className="min-w-0 max-w-3xl">
             <p className="mb-4 text-xs font-medium uppercase tracking-[0.16em] text-[#b94735]">
               {slide.kicker}
             </p>
             <h1
               className={cn(
-                "max-w-[12ch] text-balance text-4xl font-semibold leading-[0.94] tracking-normal text-[#171714] sm:text-5xl xl:text-6xl",
+                "max-w-[14ch] [overflow-wrap:anywhere] text-balance text-4xl font-semibold leading-[0.98] tracking-normal text-[#171714] sm:max-w-[12ch] sm:text-5xl sm:leading-[0.94] xl:text-6xl",
                 shared && "sm:text-6xl xl:text-7xl",
               )}
             >
@@ -190,7 +192,7 @@ function PresentationPlayerDeck({
             <p className="mt-6 max-w-xl text-pretty text-base leading-7 text-[#4d4c47] sm:text-lg">
               {slide.body}
             </p>
-            <p className="mt-7 inline-flex max-w-xl items-center gap-1.5 rounded-md border bg-[#fffdf8]/90 px-3 py-2 text-sm font-medium text-[#171714] shadow-sm">
+            <p className="mt-7 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border bg-[#fffdf8]/90 px-3 py-2 text-sm font-medium text-[#171714] shadow-sm sm:max-w-xl">
               <BadgeCheckIcon data-icon="inline-start" />
               {slide.verdict}
             </p>

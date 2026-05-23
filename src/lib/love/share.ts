@@ -15,6 +15,10 @@ export function createSharePayload(input: {
   senderName: string;
   recipientName: string;
   vibe: SharePayload["vibe"];
+  deckLength?: SharePayload["deckLength"];
+  dramaLevel?: SharePayload["dramaLevel"];
+  occasion?: SharePayload["occasion"];
+  insideJoke?: string;
   imageUrls: string[];
   seed: string;
   createdAt?: string;
@@ -26,6 +30,10 @@ export function createSharePayload(input: {
     vibe: input.vibe,
     seed: input.seed,
     createdAt: input.createdAt ?? new Date().toISOString(),
+    deckLength: input.deckLength,
+    dramaLevel: input.dramaLevel,
+    occasion: input.occasion,
+    insideJoke: sanitizeOptionalText(input.insideJoke),
     imageUrls: sanitizeImageUrls(input.imageUrls),
   });
 }
@@ -63,6 +71,10 @@ export function presentationFromPayload(
       recipientName: parsed.recipientName,
       vibe: parsed.vibe,
       seed: parsed.seed,
+      deckLength: parsed.deckLength,
+      dramaLevel: parsed.dramaLevel,
+      occasion: parsed.occasion,
+      insideJoke: parsed.insideJoke,
       assets,
     }),
   };
@@ -99,6 +111,12 @@ function bytesToBase64Url(bytes: Uint8Array) {
       : btoa(String.fromCharCode(...bytes));
 
   return base64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function sanitizeOptionalText(value: string | undefined) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : undefined;
 }
 
 function base64UrlToBytes(value: string) {

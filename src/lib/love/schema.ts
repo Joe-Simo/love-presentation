@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  MAX_INSIDE_JOKE_LENGTH,
   MAX_IMAGE_URL_LENGTH,
   MAX_IMAGE_URLS,
   MAX_NAME_LENGTH,
@@ -14,6 +15,32 @@ const cleanName = z
   .regex(/^[^<>{}[\]\\]+$/, "Names cannot contain markup or script characters.");
 
 export const vibeSchema = z.enum(["boardroom", "chaos", "sincere"]);
+export const deckLengthSchema = z.enum([
+  "random",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+]);
+export const dramaLevelSchema = z.enum(["modest", "dramatic", "unwell"]);
+export const loveOccasionSchema = z.enum([
+  "just-because",
+  "anniversary",
+  "date-night",
+  "birthday",
+  "apology",
+]);
+
+const cleanInsideJoke = z
+  .string()
+  .trim()
+  .max(
+    MAX_INSIDE_JOKE_LENGTH,
+    `Inside jokes must be ${MAX_INSIDE_JOKE_LENGTH} characters or fewer.`,
+  )
+  .regex(/^[^<>{}[\]\\]*$/, "Inside jokes cannot contain markup characters.");
 
 export const isoDateSchema = z.iso.datetime({ offset: true });
 
@@ -43,6 +70,10 @@ export const sharePayloadSchema = z.object({
   vibe: vibeSchema,
   seed: z.string().min(1).max(128),
   createdAt: isoDateSchema,
+  deckLength: deckLengthSchema.optional(),
+  dramaLevel: dramaLevelSchema.optional(),
+  occasion: loveOccasionSchema.optional(),
+  insideJoke: cleanInsideJoke.optional(),
   imageUrls: imageUrlsSchema,
 });
 
@@ -50,5 +81,9 @@ export const creatorFieldsSchema = sharePayloadSchema.pick({
   senderName: true,
   recipientName: true,
   vibe: true,
+  deckLength: true,
+  dramaLevel: true,
+  occasion: true,
+  insideJoke: true,
   imageUrls: true,
 });

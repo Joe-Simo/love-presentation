@@ -321,7 +321,10 @@ body {
 }
 
 .love-field input,
-.love-image-input input {
+.love-field select,
+.love-field textarea,
+.love-image-input input,
+.love-image-input textarea {
   width: 100%;
   min-width: 0;
   height: 39px;
@@ -339,18 +342,45 @@ body {
     background 160ms ease;
 }
 
+.love-field select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--love-muted) 50%),
+    linear-gradient(135deg, var(--love-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 17px,
+    calc(100% - 12px) 17px;
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+  cursor: pointer;
+  padding-right: 34px;
+}
+
+.love-field textarea,
+.love-image-input textarea {
+  height: auto;
+  min-height: 58px;
+  line-height: 1.35;
+  padding: 10px 42px 10px 13px;
+  resize: vertical;
+}
+
 .love-field input::placeholder {
   color: color-mix(in srgb, var(--love-muted) 62%, transparent);
 }
 
 .love-field input:focus,
-.love-image-input input:focus {
+.love-field select:focus,
+.love-field textarea:focus,
+.love-image-input input:focus,
+.love-image-input textarea:focus {
   border-color: color-mix(in srgb, var(--love-accent) 64%, #8b8279);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--love-accent) 13%, transparent);
-  background: color-mix(in srgb, #fffdf8 80%, transparent);
+  background-color: color-mix(in srgb, #fffdf8 80%, transparent);
 }
 
-.love-tone-field {
+.love-tone-field,
+.love-custom-field {
   display: grid;
   gap: 9px;
   min-width: 0;
@@ -359,7 +389,8 @@ body {
   border: 0;
 }
 
-.love-tone-field legend {
+.love-tone-field legend,
+.love-custom-field legend {
   padding: 0;
   color: var(--love-ink);
   font-size: 12px;
@@ -370,6 +401,16 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 18px;
+}
+
+.love-custom-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.love-wide-field {
+  margin-top: 9px;
 }
 
 .love-tone {
@@ -463,11 +504,10 @@ body {
 .love-image-input svg {
   position: absolute;
   right: 14px;
-  top: 50%;
+  top: 17px;
   width: 17px;
   height: 17px;
   color: color-mix(in srgb, var(--love-muted) 72%, transparent);
-  transform: translateY(-50%);
 }
 
 .love-submit {
@@ -581,8 +621,9 @@ body {
 .love-preview-zone {
   position: relative;
   min-width: 0;
+  width: calc(100% - 38px);
+  margin-left: 38px;
   padding-top: 21px;
-  transform: translateX(38px);
 }
 
 .love-ambient-canvas {
@@ -907,8 +948,9 @@ body {
   }
 
   .love-preview-zone {
+    width: auto;
+    margin-left: 0;
     padding-top: 10px;
-    transform: none;
   }
 
   .love-floating-heart {
@@ -964,7 +1006,16 @@ body {
   }
 
   .love-title {
-    font-size: clamp(56px, 17vw, 82px);
+    font-size: clamp(48px, 14vw, 66px);
+    line-height: 1;
+  }
+
+  .love-title span,
+  .love-title span:first-child,
+  .love-title em {
+    width: auto;
+    white-space: normal;
+    transform: none;
   }
 
   .love-subtitle {
@@ -974,6 +1025,7 @@ body {
 
   .love-name-grid,
   .love-tone-grid,
+  .love-custom-grid,
   .love-notes {
     grid-template-columns: 1fr;
   }
@@ -983,10 +1035,19 @@ body {
   }
 
   .love-preview-card {
-    width: calc(100vw - 36px);
+    width: 100%;
+    max-width: 100%;
+    height: auto;
     min-height: 520px;
     padding: 31px 24px 34px;
-    transform: rotate(-0.5deg);
+    transform: none;
+  }
+
+  .love-ambient-canvas {
+    inset: 18px 0 58px;
+    width: 100%;
+    height: calc(100% - 76px);
+    opacity: 0.2;
   }
 
   .love-card-meta {
@@ -1033,5 +1094,47 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     line-height: 1.5;
+  }
+}
+
+@media (max-width: 420px) {
+  .love-home {
+    padding: 20px 14px 22px;
+  }
+
+  .love-brand {
+    font-size: 18px;
+  }
+
+  .love-source {
+    gap: 0;
+  }
+
+  .love-source span {
+    display: none;
+  }
+
+  .love-hero {
+    gap: 32px;
+    padding-top: 40px;
+  }
+
+  .love-title {
+    font-size: clamp(43px, 13vw, 54px);
+  }
+
+  .love-preview-card {
+    min-height: 500px;
+    padding: 28px 20px 32px;
+  }
+
+  .love-preview-card h2 {
+    font-size: clamp(42px, 13vw, 54px);
+  }
+
+  .love-stamp {
+    width: 142px;
+    min-height: 56px;
+    font-size: 15px;
   }
 }
