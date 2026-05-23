@@ -14,12 +14,12 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { PaperAmbientScene } from "@/components/love/paper-ambient-scene";
 import {
   createSharePayload,
   encodeSharePayload,
 } from "@/lib/love/share";
 import type {
+  CompromiseLevel,
   DeckLengthChoice,
   DramaLevel,
   LoveOccasion,
@@ -32,10 +32,12 @@ type ShareState = {
 };
 
 type PreviewSlide = {
+  slideNumber: string;
   kicker: string;
   title: string;
   lines: string[];
   verdict: string;
+  stamp: string;
 };
 
 const toneOptions: Array<{
@@ -61,6 +63,77 @@ const toneOptions: Array<{
     label: "Soft Roast",
     description: "Sweet, but honest.",
     icon: HeartIcon,
+  },
+];
+
+const compromiseLevels: Array<{
+  value: CompromiseLevel;
+  label: string;
+  preview: PreviewSlide;
+}> = [
+  {
+    value: "objective",
+    label: "Objective",
+    preview: {
+      slideNumber: "03",
+      kicker: "Observation",
+      title: "Possible compatibility.",
+      lines: [
+        "These two people appear compatible.",
+        "Further review is recommended.",
+        "The committee remains calm for now.",
+      ],
+      verdict: "Compatible, allegedly.",
+      stamp: "REVIEWED",
+    },
+  },
+  {
+    value: "suspicious",
+    label: "Suspicious",
+    preview: {
+      slideNumber: "03",
+      kicker: "Exhibit A",
+      title: "Suspicious chemistry.",
+      lines: [
+        "They laugh at the same dumb stuff.",
+        "They finish each other's sentences.",
+        "The science is not explaining this one.",
+      ],
+      verdict: "Highly suspicious.",
+      stamp: "SUSPICIOUS",
+    },
+  },
+  {
+    value: "compromised",
+    label: "Compromised",
+    preview: {
+      slideNumber: "03",
+      kicker: "Finding",
+      title: "Neutrality has left.",
+      lines: [
+        "The presenter can no longer remain objective.",
+        "The committee has developed feelings.",
+        "The minutes now include blushing.",
+      ],
+      verdict: "Bias confirmed.",
+      stamp: "BIASED",
+    },
+  },
+  {
+    value: "unwell",
+    label: "Emotionally Unwell",
+    preview: {
+      slideNumber: "03",
+      kicker: "Exhibit A",
+      title: "Suspicious chemistry.",
+      lines: [
+        "They laugh at the same dumb stuff.",
+        "They finish each other's sentences.",
+        "The science is not explaining this one.",
+      ],
+      verdict: "Highly suspicious.",
+      stamp: "APPROVED, UNFORTUNATELY",
+    },
   },
 ];
 
@@ -97,97 +170,30 @@ const occasionOptions: Array<{
   { value: "apology", label: "Apology" },
 ];
 
-const previewSlides: PreviewSlide[] = [
-  {
-    kicker: "Opening Statement",
-    title: "Normal presentation.",
-    lines: [
-      "Please ignore the emotional bias in the room.",
-      "The agenda is simple. The feelings are not.",
-      "All claims have been reviewed by nobody neutral.",
-    ],
-    verdict: "Proceed with caution.",
-  },
-  {
-    kicker: "Risk Memo",
-    title: "Presenter compromised.",
-    lines: [
-      "Objectivity left shortly after the first smile.",
-      "Further analysis may contain affectionate language.",
-      "Legal has asked everyone to calm down.",
-    ],
-    verdict: "Bias confirmed.",
-  },
-  {
-    kicker: "Exhibit A",
-    title: "Suspicious chemistry.",
-    lines: [
-      "They laugh at the same dumb stuff.",
-      "They finish each other's sentences.",
-      "The science is not explaining this one.",
-    ],
-    verdict: "Highly suspicious.",
-  },
-  {
-    kicker: "Forecast",
-    title: "Feelings trend upward.",
-    lines: [
-      "Smiling has increased beyond reasonable levels.",
-      "Casual mentions now require formal disclosure.",
-      "The graph is dramatic and refuses to apologize.",
-    ],
-    verdict: "Growth looks dangerous.",
-  },
-  {
-    kicker: "Compliance",
-    title: "Leaving is not advised.",
-    lines: [
-      "The committee reviewed alternative options.",
-      "None of them had this much eye contact.",
-      "A follow-up meeting has been emotionally scheduled.",
-    ],
-    verdict: "Stay adorable.",
-  },
-  {
-    kicker: "Final Ruling",
-    title: "Guilty of being cute.",
-    lines: [
-      "The court has examined the evidence.",
-      "The objections were mostly blushing.",
-      "Sentencing will include more time together.",
-    ],
-    verdict: "Approved, unfortunately.",
-  },
-  {
-    kicker: "Appendix",
-    title: "No further questions.",
-    lines: [
-      "The deck has made its case.",
-      "The room is now emotionally unwell.",
-      "Please collect your dramatic evidence on the way out.",
-    ],
-    verdict: "Case closed.",
-  },
-];
-
 export function LoveCreator() {
   const [senderName, setSenderName] = useState("Joseph");
   const [recipientName, setRecipientName] = useState("Antoneta");
   const [vibe, setVibe] = useState<PresentationVibe>("boardroom");
-  const [deckLength, setDeckLength] = useState<DeckLengthChoice>("random");
+  const [compromiseLevel, setCompromiseLevel] =
+    useState<CompromiseLevel>("unwell");
+  const [deckLength, setDeckLength] = useState<DeckLengthChoice>("7");
   const [dramaLevel, setDramaLevel] = useState<DramaLevel>("dramatic");
   const [occasion, setOccasion] = useState<LoveOccasion>("just-because");
   const [insideJoke, setInsideJoke] = useState("");
   const [imageUrlsText, setImageUrlsText] = useState("");
   const [share, setShare] = useState<ShareState | null>(null);
-  const [previewIndex, setPreviewIndex] = useState(2);
   const rootRef = useRef<HTMLElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const cardContentRef = useRef<HTMLDivElement>(null);
   const stampRef = useRef<HTMLDivElement>(null);
 
-  const preview = previewSlides[previewIndex] ?? previewSlides[2];
-  const previewNumber = String(previewIndex + 1).padStart(2, "0");
+  const compromiseIndex = compromiseLevels.findIndex(
+    (level) => level.value === compromiseLevel,
+  );
+  const safeCompromiseIndex = Math.max(compromiseIndex, 0);
+  const preview =
+    compromiseLevels[safeCompromiseIndex]?.preview ??
+    compromiseLevels[1].preview;
   const isSelfLove =
     normalizeName(senderName) !== "" &&
     normalizeName(senderName) === normalizeName(recipientName);
@@ -253,7 +259,7 @@ export function LoveCreator() {
     return () => {
       animation.kill();
     };
-  }, [previewIndex]);
+  }, [compromiseLevel]);
 
   function createPresentation() {
     try {
@@ -263,6 +269,7 @@ export function LoveCreator() {
         vibe,
         deckLength,
         dramaLevel,
+        compromiseLevel,
         occasion,
         insideJoke,
         imageUrls: splitImageUrls(imageUrlsText),
@@ -318,7 +325,10 @@ export function LoveCreator() {
   }
 
   function showNextPreview() {
-    setPreviewIndex((current) => (current + 1) % previewSlides.length);
+    const next =
+      compromiseLevels[(safeCompromiseIndex + 1) % compromiseLevels.length];
+    setCompromiseLevel(next.value);
+    setShare(null);
     animateStamp();
   }
 
@@ -359,8 +369,8 @@ export function LoveCreator() {
           </h1>
 
           <p className="love-subtitle" data-reveal>
-            A tiny app for turning your favorite person into a dramatic little
-            presentation.
+            A tiny free app for making private slideshow links about why two
+            people are suspiciously perfect together.
           </p>
 
           <form
@@ -430,8 +440,90 @@ export function LoveCreator() {
               </div>
             </fieldset>
 
-            <fieldset className="love-custom-field">
-              <legend>Customize</legend>
+            <fieldset className="love-compromise-field">
+              <legend>Emotional compromise</legend>
+              <input
+                aria-label="Emotional compromise"
+                type="range"
+                min={0}
+                max={compromiseLevels.length - 1}
+                step={1}
+                value={safeCompromiseIndex}
+                onChange={(event) => {
+                  const next =
+                    compromiseLevels[Number(event.target.value)] ??
+                    compromiseLevels[1];
+                  setCompromiseLevel(next.value);
+                  setShare(null);
+                }}
+              />
+              <div className="love-compromise-labels" aria-hidden="true">
+                {compromiseLevels.map((level) => (
+                  <span
+                    key={level.value}
+                    className={level.value === compromiseLevel ? "is-active" : ""}
+                  >
+                    {level.label}
+                  </span>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="love-field love-image-field">
+              <span>
+                Optional image URL <small>(https://...)</small>
+              </span>
+              <span className="love-image-input">
+                <input
+                  value={imageUrlsText}
+                  onChange={(event) => {
+                    setImageUrlsText(event.target.value);
+                    setShare(null);
+                  }}
+                  placeholder="https://example.com/your-photo.jpg"
+                />
+                <ImageIcon aria-hidden="true" />
+              </span>
+            </label>
+
+            <button
+              className="love-submit"
+              type="submit"
+              disabled={!canCreate}
+            >
+              <span>Create private link</span>
+              <ArrowRightIcon aria-hidden="true" />
+            </button>
+
+            <div className="love-privacy">
+              <LockKeyholeIcon aria-hidden="true" />
+              <span>
+                No account. No uploads. No database.{" "}
+                <strong>No committee approval.</strong>
+              </span>
+            </div>
+
+            {isSelfLove ? (
+              <p className="love-self-note">
+                This appears to be self-love. Valid.
+              </p>
+            ) : null}
+
+            {share ? (
+              <div className="love-share-result" role="status">
+                <p>Your deck is ready.</p>
+                <button type="button" onClick={copyShareLink}>
+                  <CopyIcon aria-hidden="true" />
+                  Copy
+                </button>
+                <a href={share.shareUrl} target="_blank" rel="noreferrer">
+                  Open
+                </a>
+              </div>
+            ) : null}
+
+            <details className="love-advanced">
+              <summary>Advanced nonsense</summary>
               <div className="love-custom-grid">
                 <label className="love-field">
                   <span>Slides</span>
@@ -494,72 +586,17 @@ export function LoveCreator() {
                   placeholder="e.g. the soup incident"
                 />
               </label>
-            </fieldset>
-
-            <label className="love-field love-image-field">
-              <span>
-                Photo links <small>(optional, up to 5)</small>
-              </span>
-              <span className="love-image-input">
-                <textarea
-                  value={imageUrlsText}
-                  onChange={(event) => {
-                    setImageUrlsText(event.target.value);
-                    setShare(null);
-                  }}
-                  placeholder="https://example.com/photo-one.jpg"
-                  rows={2}
-                />
-                <ImageIcon aria-hidden="true" />
-              </span>
-            </label>
-
-            <button
-              className="love-submit"
-              type="submit"
-              disabled={!canCreate}
-            >
-              <span>Create the deck</span>
-              <ArrowRightIcon aria-hidden="true" />
-            </button>
-
-            <div className="love-privacy">
-              <LockKeyholeIcon aria-hidden="true" />
-              <span>
-                No sign-in. No overthinking.{" "}
-                <strong>Just the evidence.</strong>
-              </span>
-            </div>
-
-            {isSelfLove ? (
-              <p className="love-self-note">
-                This appears to be self-love. Valid.
-              </p>
-            ) : null}
-
-            {share ? (
-              <div className="love-share-result" role="status">
-                <p>Your deck is ready.</p>
-                <button type="button" onClick={copyShareLink}>
-                  <CopyIcon aria-hidden="true" />
-                  Copy
-                </button>
-                <a href={share.shareUrl} target="_blank" rel="noreferrer">
-                  Open
-                </a>
-              </div>
-            ) : null}
+            </details>
           </form>
         </div>
 
         <div className="love-preview-zone" data-reveal>
-          <PaperAmbientScene />
           <HeartIcon className="love-floating-heart" aria-hidden="true" />
           <div className="love-card-wrap">
             <article ref={cardRef} className="love-preview-card">
               <div className="love-card-meta">
                 <span>
-                  Slide <strong>{previewNumber}</strong> / 07
+                  Slide <strong>{preview.slideNumber}</strong> / 07
                 </span>
                 <span>Case file #2025-LOVE-001</span>
               </div>
@@ -582,8 +619,9 @@ export function LoveCreator() {
               </div>
 
               <div ref={stampRef} className="love-stamp" aria-hidden="true">
-                <span>Approved,</span>
-                <span>unfortunately</span>
+                {preview.stamp.split(", ").map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
                 <HeartIcon />
               </div>
             </article>
@@ -602,7 +640,7 @@ export function LoveCreator() {
             {Array.from({ length: 7 }, (_, index) => (
               <span
                 key={index}
-                className={index === previewIndex ? "is-active" : ""}
+                className={index === 2 ? "is-active" : ""}
               />
             ))}
           </div>
@@ -613,30 +651,27 @@ export function LoveCreator() {
         <div id="how" className="love-note" data-reveal>
           <LockKeyholeIcon aria-hidden="true" />
           <div>
-            <h2>Made for one person</h2>
+            <h2>Private by design</h2>
             <p>
-              Build a tiny presentation that feels personal, specific, and
-              slightly too accurate.
+              Your deck lives in the link. We don&apos;t store your love crimes.
             </p>
           </div>
         </div>
         <div id="samples" className="love-note" data-reveal>
           <Link2Icon aria-hidden="true" />
           <div>
-            <h2>Send when ready</h2>
+            <h2>Share anywhere</h2>
             <p>
-              Deliver the deck and prepare for smiling, debating, or immediate
-              screenshots.
+              Send the link and prepare for smiles, tears, or negotiations.
             </p>
           </div>
         </div>
         <div id="about" className="love-note" data-reveal>
           <SparklesIcon aria-hidden="true" />
           <div>
-            <h2>Make it specific</h2>
+            <h2>Yours, not theirs</h2>
             <p>
-              Choose the tone, occasion, drama level, inside joke, and the
-              amount of evidence.
+              Edit anytime. Regenerate. Make it more dramatic.
             </p>
           </div>
         </div>
@@ -644,11 +679,8 @@ export function LoveCreator() {
 
       <footer className="love-footer" data-reveal>
         <p>
-          Made with <HeartIcon aria-hidden="true" /> by one emotionally
+          Open source with <HeartIcon aria-hidden="true" /> by one emotionally
           compromised developer.
-        </p>
-        <p>
-          For when a text is too small and a full presentation is barely enough.
         </p>
       </footer>
     </main>

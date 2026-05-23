@@ -126,6 +126,34 @@ describe("love presentation generation", () => {
     expect(slides[1]?.verdict).toBe("Self-love status: valid.");
   });
 
+  test("builds the compromise arc and deterministic fake metrics locally", () => {
+    const slides = createSlides({
+      senderName: "Joe",
+      recipientName: "Ana",
+      vibe: "boardroom",
+      seed: "fixed",
+      deckLength: "7",
+      dramaLevel: "dramatic",
+      compromiseLevel: "unwell",
+      occasion: "just-because",
+      assets: [],
+    });
+
+    expect(slides).toHaveLength(7);
+    expect(slides.map((slide) => slide.id)).toEqual([
+      "cover",
+      "compromised-presenter",
+      "chemistry",
+      "relationship-kpi",
+      "witness-statement",
+      "risk-assessment",
+      "final-ruling",
+    ]);
+    expect(slides[3]?.body).toContain("Compatibility Index:");
+    expect(slides[3]?.body).toContain("Leaving Recommendation:");
+    expect(slides[6]?.verdict).toBe("Accept ruling. Appeal with snacks.");
+  });
+
   test("validates names without accepting markup characters", () => {
     expect(() =>
       creatorFieldsSchema.parse({
@@ -168,6 +196,7 @@ describe("love presentation generation", () => {
       vibe: "sincere",
       deckLength: "8",
       dramaLevel: "modest",
+      compromiseLevel: "compromised",
       occasion: "birthday",
       insideJoke: "the hat",
       seed: "fixed-seed",
@@ -183,6 +212,9 @@ describe("love presentation generation", () => {
       "https://example.com/photo.jpg",
     );
     expect(presentationFromPayload(payload).slides).toHaveLength(8);
+    expect(presentationFromPayload(payload).slides[1]?.id).toBe(
+      "compromised-presenter",
+    );
   });
 
   test("rejects malformed share tokens", () => {

@@ -15,6 +15,12 @@ const cleanName = z
   .regex(/^[^<>{}[\]\\]+$/, "Names cannot contain markup or script characters.");
 
 export const vibeSchema = z.enum(["boardroom", "chaos", "sincere"]);
+export const compromiseLevelSchema = z.enum([
+  "objective",
+  "suspicious",
+  "compromised",
+  "unwell",
+]);
 export const deckLengthSchema = z.enum([
   "random",
   "5",
@@ -72,6 +78,7 @@ export const sharePayloadSchema = z.object({
   createdAt: isoDateSchema,
   deckLength: deckLengthSchema.optional(),
   dramaLevel: dramaLevelSchema.optional(),
+  compromiseLevel: compromiseLevelSchema.optional(),
   occasion: loveOccasionSchema.optional(),
   insideJoke: cleanInsideJoke.optional(),
   imageUrls: imageUrlsSchema,
@@ -83,6 +90,7 @@ export const creatorFieldsSchema = sharePayloadSchema.pick({
   vibe: true,
   deckLength: true,
   dramaLevel: true,
+  compromiseLevel: true,
   occasion: true,
   insideJoke: true,
   imageUrls: true,

@@ -8,6 +8,7 @@ import {
   ArrowRightIcon,
   BadgeCheckIcon,
   LinkIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,8 @@ import {
   ProgressLabel,
 } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { PublicPresentation } from "@/lib/love/types";
+import { createLoveMetrics } from "@/lib/love/metrics";
+import type { LoveSlide, PublicPresentation } from "@/lib/love/types";
 import { DeckScene } from "@/components/love/deck-scene";
 
 type PresentationPlayerProps = {
@@ -47,6 +49,7 @@ function PresentationPlayerDeck({
   shared = false,
 }: PresentationPlayerProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [worseLevel, setWorseLevel] = useState(0);
   const [failedImageIds, setFailedImageIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -66,6 +69,15 @@ function PresentationPlayerDeck({
     presentation.slides.length > 1
       ? (safeActiveIndex / (presentation.slides.length - 1)) * 100
       : 100;
+  const objectivity = Math.max(0, Math.round(100 - progress));
+  const metrics = createLoveMetrics(
+    presentation.senderName,
+    presentation.recipientName,
+  );
+  const displaySlide = slide
+    ? intensifySlide(slide, worseLevel, presentation, safeActiveIndex)
+    : null;
+  const isFinalSlide = safeActiveIndex === presentation.slides.length - 1;
 
   useLayoutEffect(() => {
     const target = slideRef.current;
@@ -121,7 +133,7 @@ function PresentationPlayerDeck({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [presentation.slides.length]);
 
-  if (!slide) {
+  if (!slide || !displaySlide) {
     return null;
   }
 
@@ -145,6 +157,7 @@ function PresentationPlayerDeck({
       <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,253,248,0.95),rgba(255,253,248,0))]" />
 
       <div className="relative z-10 flex min-h-[inherit] flex-col justify-between p-4 sm:p-7">
+        {isFinalSlide ? <FinalConfetti /> : null}
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <Badge variant="outline" className="rounded-md bg-background/80">
             {presentation.senderName} for {presentation.recipientName}
@@ -179,7 +192,7 @@ function PresentationPlayerDeck({
         >
           <article className="min-w-0 max-w-3xl">
             <p className="mb-4 text-xs font-medium uppercase tracking-[0.16em] text-[#b94735]">
-              {slide.kicker}
+              {displaySlide.kicker}
             </p>
             <h1
               className={cn(
@@ -187,14 +200,14 @@ function PresentationPlayerDeck({
                 shared && "sm:text-6xl xl:text-7xl",
               )}
             >
-              {slide.title}
+              {displaySlide.title}
             </h1>
-            <p className="mt-6 max-w-xl text-pretty text-base leading-7 text-[#4d4c47] sm:text-lg">
-              {slide.body}
+            <p className="mt-6 max-w-xl whitespace-pre-line text-pretty text-base leading-7 text-[#4d4c47] sm:text-lg">
+              {displaySlide.body}
             </p>
             <p className="mt-7 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border bg-[#fffdf8]/90 px-3 py-2 text-sm font-medium text-[#171714] shadow-sm sm:max-w-xl">
               <BadgeCheckIcon data-icon="inline-start" />
-              {slide.verdict}
+              {displaySlide.verdict}
             </p>
           </article>
 
@@ -221,7 +234,7 @@ function PresentationPlayerDeck({
               <div className="mx-auto flex aspect-[4/5] w-full max-w-[280px] flex-col justify-between rounded-lg border bg-[#171714] p-5 text-[#fffdf8] shadow-[0_22px_70px_rgba(22,20,17,0.18)] sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-[#fffdf8]/60">
                   <span>LP-01</span>
-                  <span>{slide.kicker}</span>
+                  <span>{displaySlide.kicker}</span>
                 </div>
                 <div className="text-center">
                   <p className="text-[4.5rem] font-semibold leading-none tracking-normal sm:text-[6rem]">
@@ -235,12 +248,12 @@ function PresentationPlayerDeck({
                 </div>
                 <div className="grid gap-2 text-sm">
                   <div className="flex items-center justify-between border-t border-white/15 pt-2">
-                    <span className="text-[#fffdf8]/60">chemistry</span>
-                    <span>validated</span>
+                    <span className="text-[#fffdf8]/60">compatibility</span>
+                    <span>{metrics.compatibility}%</span>
                   </div>
                   <div className="flex items-center justify-between border-t border-white/15 pt-2">
-                    <span className="text-[#fffdf8]/60">drama</span>
-                    <span>tasteful</span>
+                    <span className="text-[#fffdf8]/60">leaving</span>
+                    <span>{metrics.leavingRecommendation}</span>
                   </div>
                 </div>
               </div>
@@ -249,6 +262,14 @@ function PresentationPlayerDeck({
         </div>
 
         <div className="rounded-lg border bg-[#fffdf8]/88 p-3 shadow-sm backdrop-blur">
+          <div className="love-objectivity-meter">
+            <span>Objectivity</span>
+            <div aria-hidden="true">
+              <i style={{ width: `${objectivity}%` }} />
+            </div>
+            <strong>{objectivity}%</strong>
+          </div>
+
           <Progress value={progress}>
             <ProgressLabel>
               Slide {safeActiveIndex + 1} of {presentation.slides.length}
@@ -268,6 +289,15 @@ function PresentationPlayerDeck({
               Back
             </Button>
             <Button
+              variant="outline"
+              onClick={() =>
+                setWorseLevel((current) => Math.min(current + 1, 5))
+              }
+            >
+              <SparklesIcon data-icon="inline-start" />
+              Make it worse
+            </Button>
+            <Button
               onClick={() =>
                 setActiveIndex(
                   Math.min(presentation.slides.length - 1, safeActiveIndex + 1),
@@ -279,8 +309,57 @@ function PresentationPlayerDeck({
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
           </div>
+          {worseLevel >= 5 ? (
+            <p className="mt-2 text-center text-xs text-[#b94735]">
+              Legal has asked us to stop.
+            </p>
+          ) : null}
         </div>
       </div>
     </section>
+  );
+}
+
+function intensifySlide(
+  slide: LoveSlide,
+  worseLevel: number,
+  presentation: PublicPresentation,
+  activeIndex: number,
+): LoveSlide {
+  if (worseLevel <= 0) {
+    return slide;
+  }
+
+  const additions = [
+    "The chemistry is becoming difficult to ignore.",
+    "The committee is no longer emotionally stable.",
+    "This presentation has stopped being objective and started being a cry for help.",
+    "Legal has asked us to stop, which the presenter has interpreted as encouragement.",
+    "The room is now taking deep breaths and still voting yes.",
+  ];
+  const level = Math.min(worseLevel, additions.length);
+  const isFinalSlide = activeIndex === presentation.slides.length - 1;
+
+  return {
+    ...slide,
+    title:
+      level >= 3 && isFinalSlide
+        ? "Final ruling. Nobody is handling this well."
+        : slide.title,
+    body: [slide.body, ...additions.slice(0, level)].join("\n\n"),
+    verdict:
+      level >= 4
+        ? "Verdict: approved, unfortunately, dramatically."
+        : slide.verdict,
+  };
+}
+
+function FinalConfetti() {
+  return (
+    <div className="love-final-confetti" aria-hidden="true">
+      {Array.from({ length: 10 }, (_, index) => (
+        <span key={index} />
+      ))}
+    </div>
   );
 }

@@ -17,6 +17,7 @@ export function createSharePayload(input: {
   vibe: SharePayload["vibe"];
   deckLength?: SharePayload["deckLength"];
   dramaLevel?: SharePayload["dramaLevel"];
+  compromiseLevel?: SharePayload["compromiseLevel"];
   occasion?: SharePayload["occasion"];
   insideJoke?: string;
   imageUrls: string[];
@@ -32,6 +33,7 @@ export function createSharePayload(input: {
     createdAt: input.createdAt ?? new Date().toISOString(),
     deckLength: input.deckLength,
     dramaLevel: input.dramaLevel,
+    compromiseLevel: input.compromiseLevel,
     occasion: input.occasion,
     insideJoke: sanitizeOptionalText(input.insideJoke),
     imageUrls: sanitizeImageUrls(input.imageUrls),
@@ -73,6 +75,7 @@ export function presentationFromPayload(
       seed: parsed.seed,
       deckLength: parsed.deckLength,
       dramaLevel: parsed.dramaLevel,
+      compromiseLevel: parsed.compromiseLevel,
       occasion: parsed.occasion,
       insideJoke: parsed.insideJoke,
       assets,

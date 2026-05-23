@@ -1,4 +1,5 @@
 import type {
+  CompromiseLevel,
   DeckLengthChoice,
   DramaLevel,
   LoveOccasion,
@@ -6,6 +7,7 @@ import type {
   PresentationAsset,
   PresentationVibe,
 } from "@/lib/love/types";
+import { createLoveMetrics } from "@/lib/love/metrics";
 
 export const VIBE_OPTIONS: Array<{
   value: PresentationVibe;
@@ -36,6 +38,7 @@ type SlideInput = {
   seed: string;
   deckLength?: DeckLengthChoice;
   dramaLevel?: DramaLevel;
+  compromiseLevel?: CompromiseLevel;
   occasion?: LoveOccasion;
   insideJoke?: string;
   assets: PresentationAsset[];
@@ -464,6 +467,10 @@ const dramaCopy: Record<
 };
 
 export function createSlides(input: SlideInput): LoveSlide[] {
+  if (input.compromiseLevel) {
+    return createCompromiseArc(input);
+  }
+
   const random = createDeterministicRandom(
     `${input.seed}:${input.senderName}:${input.recipientName}:${input.vibe}`,
   );
@@ -639,6 +646,196 @@ export function createSlides(input: SlideInput): LoveSlide[] {
     },
   ];
 }
+
+function createCompromiseArc(input: SlideInput): LoveSlide[] {
+  const random = createDeterministicRandom(
+    `${input.seed}:${input.senderName}:${input.recipientName}:${input.vibe}:${input.compromiseLevel}`,
+  );
+  const pack = phrasePacks[input.vibe];
+  const pick = <Value>(values: Value[]) =>
+    values[Math.floor(random() * values.length)] as Value;
+  const senderName = input.senderName.trim();
+  const recipientName = input.recipientName.trim();
+  const sameName =
+    senderName.toLowerCase() === recipientName.toLowerCase();
+  const metrics = createLoveMetrics(senderName, recipientName);
+  const deckLength = input.deckLength ?? "7";
+  const targetCount = resolveDeckLength(deckLength, random);
+  const dramaLevel = input.dramaLevel ?? "dramatic";
+  const occasion = input.occasion ?? "just-because";
+  const insideJoke = input.insideJoke?.trim();
+  const compromiseLevel = input.compromiseLevel ?? "suspicious";
+  const compromise = compromiseArcCopy[compromiseLevel];
+  const firstAsset = input.assets[0];
+
+  const baseSlides: LoveSlide[] = [
+    {
+      id: "cover",
+      kicker: "Opening Statement",
+      title: sameName
+        ? "This appears to be self-love"
+        : "This is a normal presentation.",
+      body: sameName
+        ? "Valid. The committee respects the confidence."
+        : `At least, that was the original plan. ${senderName} has prepared a very neutral review for ${recipientName}.`,
+      verdict: sameName
+        ? "Finding: self-love is approved without further review."
+        : "Neutrality status: pending.",
+    },
+    {
+      id: "compromised-presenter",
+      kicker: "Disclosure",
+      title: "The presenter is compromised.",
+      body: compromise.presenter,
+      verdict:
+        compromiseLevel === "objective"
+          ? "Bias warning: low, for now."
+          : "Bias warning: severe.",
+    },
+    {
+      id: "chemistry",
+      kicker: "Exhibit A",
+      title: "Suspicious chemistry.",
+      body: compromise.chemistry,
+      verdict: "Highly suspicious.",
+    },
+    {
+      id: "relationship-kpi",
+      kicker: "Relationship KPI",
+      title: "The numbers are not helping.",
+      body: [
+        `Compatibility Index: ${metrics.compatibility}%`,
+        `Bad joke tolerance: ${metrics.badJokeTolerance}%`,
+        `Snack compatibility: ${metrics.snackAlignment}%`,
+        `Cuteness Risk: ${metrics.cuteRisk}`,
+        `Leaving Recommendation: ${metrics.leavingRecommendation}`,
+      ].join("\n"),
+      verdict: `Bias Warning: ${metrics.biasWarning}.`,
+    },
+    {
+      id: "witness-statement",
+      kicker: "Witness Statement",
+      title: "Several witnesses confirm the problem.",
+      body: insideJoke
+        ? `Several witnesses confirm they are annoying in the best way. The phrase "${insideJoke}" has also been entered into evidence.`
+        : "Several witnesses confirm they are annoying in the best way. Nobody is neutral enough to object.",
+      verdict: "Witness credibility: emotionally compromised.",
+      imageAssetId: firstAsset?.id,
+    },
+    {
+      id: "risk-assessment",
+      kicker: "Risk Assessment",
+      title: "Separation is not recommended.",
+      body: compromise.risk,
+      verdict: "Risk level: adorable and inconvenient.",
+    },
+    {
+      id: "final-ruling",
+      kicker: "Final Ruling",
+      title: "Guilty of being suspiciously adorable.",
+      body: sameName
+        ? "The court finds this relationship with yourself valid, dramatic, and properly documented."
+        : `The court finds ${senderName} and ${recipientName} guilty of being suspiciously adorable.`,
+      verdict: "Accept ruling. Appeal with snacks.",
+    },
+  ];
+
+  if (targetCount <= baseSlides.length) {
+    return [
+      ...baseSlides.slice(0, Math.max(targetCount - 1, 1)),
+      baseSlides[baseSlides.length - 1] as LoveSlide,
+    ];
+  }
+
+  const context: SlideContext = {
+    senderName,
+    recipientName,
+    couple: `${senderName} + ${recipientName}`,
+    compatibility: metrics.compatibility,
+    dramaLevel,
+    occasion,
+    pack,
+    pick,
+  };
+  const imageSlides = input.assets.slice(1, 5).map((asset, index) => ({
+    id: `photo-${asset.id}`,
+    kicker: `Exhibit ${String.fromCharCode(66 + index)}`,
+    title: pick(pack.captions),
+    body: `${recipientName}, please observe the attached evidence and try to act normal.`,
+    verdict: pick(pack.verdicts),
+    imageAssetId: asset.id,
+  }));
+  const extraCandidates = collectUniqueSlides([
+    ...(insideJoke
+      ? [
+          {
+            id: "inside-joke",
+            kicker: "Inside Joke",
+            title: `"${insideJoke}" has been entered into evidence.`,
+            body: "No one else needs to understand it. That is how the committee knows it is working.",
+            verdict: "Private bit: accepted.",
+          },
+        ]
+      : []),
+    {
+      id: `occasion-${occasion}`,
+      ...pick(occasionSlides[occasion]),
+    },
+    {
+      id: "drama",
+      kicker: "Drama Dial",
+      title: dramaCopy[dramaLevel].title,
+      body: dramaCopy[dramaLevel].body,
+      verdict: dramaCopy[dramaLevel].verdict,
+    },
+    ...imageSlides,
+    ...shuffle(buildProceduralSlides(context, 12), random),
+  ]);
+
+  return [
+    ...baseSlides.slice(0, -1),
+    ...extraCandidates.slice(0, targetCount - baseSlides.length),
+    baseSlides[baseSlides.length - 1] as LoveSlide,
+  ];
+}
+
+const compromiseArcCopy: Record<
+  CompromiseLevel,
+  {
+    presenter: string;
+    chemistry: string;
+    risk: string;
+  }
+> = {
+  objective: {
+    presenter:
+      "The presenter remains calm, organized, and suspiciously proud of this deck.",
+    chemistry:
+      "These two people appear compatible. Further review is recommended before anyone starts smiling too much.",
+    risk: "If separated, both parties will probably be fine, though the room may become noticeably less charming.",
+  },
+  suspicious: {
+    presenter:
+      "Objectivity left shortly after the first smile. Further analysis may contain affectionate language.",
+    chemistry:
+      "They laugh at the same dumb stuff.\nThey finish each other's sentences.\nThe science is not explaining this one.",
+    risk: "If separated, both parties may become dramatically less fun. The committee considers this avoidable.",
+  },
+  compromised: {
+    presenter:
+      "The presenter can no longer be trusted to remain neutral. The committee has developed feelings.",
+    chemistry:
+      "The chemistry has become statistically inconvenient.\nBad joke tolerance is trending upward.\nNeutral observers were not invited.",
+    risk: "If separated, the forecast includes unnecessary longing, lower snack morale, and worse anecdotes.",
+  },
+  unwell: {
+    presenter:
+      "Quarterly feelings review has gone off the rails. Legal has asked everyone to stop using the word destiny.",
+    chemistry:
+      "They laugh at the same dumb stuff.\nThey finish each other's sentences.\nThe science is not explaining this one.",
+    risk: "Leaving is denied. The committee is crying, the graph is biased, and the snacks have chosen a side.",
+  },
+};
 
 function buildProceduralSlides(context: SlideContext, count: number) {
   return Array.from({ length: count }, (_, index) => {

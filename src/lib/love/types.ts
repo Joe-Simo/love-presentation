@@ -1,4 +1,9 @@
 export type PresentationVibe = "boardroom" | "chaos" | "sincere";
+export type CompromiseLevel =
+  | "objective"
+  | "suspicious"
+  | "compromised"
+  | "unwell";
 export type DeckLengthChoice =
   | "random"
   | "5"
@@ -51,6 +56,7 @@ export type SharePayload = {
   createdAt: string;
   deckLength?: DeckLengthChoice;
   dramaLevel?: DramaLevel;
+  compromiseLevel?: CompromiseLevel;
   occasion?: LoveOccasion;
   insideJoke?: string;
   imageUrls: string[];
