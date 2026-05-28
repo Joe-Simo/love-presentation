@@ -25,11 +25,12 @@ const bodoni = Bodoni_Moda({
 export const metadata: Metadata = {
   metadataBase: new URL("https://lovepresentation.com"),
   title: "Love Presentation",
-  description: "Make a funny private slideshow for someone suspiciously compatible.",
+  description:
+    "Emotionally compromised presentation software for private love slideshow links.",
   openGraph: {
     title: "Love Presentation",
     description:
-      "Make a funny private slideshow for someone suspiciously compatible.",
+      "Emotionally compromised presentation software for private love slideshow links.",
     url: "https://lovepresentation.com",
     siteName: "Love Presentation",
     type: "website",
