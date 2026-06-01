@@ -65,11 +65,14 @@ function PresentationPlayerDeck({
   const visibleImage = image && !failedImageIds.has(image.id) ? image : undefined;
   const senderInitial = presentation.senderName.slice(0, 1).toUpperCase();
   const recipientInitial = presentation.recipientName.slice(0, 1).toUpperCase();
-  const progress =
+  const slideProgress =
     presentation.slides.length > 1
       ? (safeActiveIndex / (presentation.slides.length - 1)) * 100
       : 100;
-  const objectivity = Math.max(0, Math.round(100 - progress));
+  const progressMax = Math.max(presentation.slides.length, 1);
+  const progressValue = Math.min(safeActiveIndex + 1, progressMax);
+  const progressPercent = Math.round((progressValue / progressMax) * 100);
+  const objectivity = Math.max(0, Math.round(100 - slideProgress));
   const metrics = createLoveMetrics(
     presentation.senderName,
     presentation.recipientName,
@@ -140,7 +143,7 @@ function PresentationPlayerDeck({
   return (
     <section
       className={cn(
-        "relative isolate rounded-lg border bg-[#f8f4ec]",
+        "material-medium relative isolate border bg-background",
         shared
           ? "min-h-dvh overflow-x-hidden overflow-y-auto rounded-none border-0"
           : "min-h-[680px] overflow-hidden",
@@ -153,13 +156,13 @@ function PresentationPlayerDeck({
           total={presentation.slides.length}
         />
       </div>
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#f8f4ec_0%,rgba(248,244,236,0.96)_37%,rgba(248,244,236,0.36)_100%)]" />
-      <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,253,248,0.95),rgba(255,253,248,0))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,0.96)_37%,rgba(255,255,255,0.34)_100%)]" />
+      <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,255,255,0))]" />
 
       <div className="relative z-10 flex min-h-[inherit] flex-col justify-between p-4 sm:p-7">
         {isFinalSlide ? <FinalConfetti /> : null}
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-          <Badge variant="outline" className="rounded-md bg-background/80">
+        <div className="text-label-13 flex flex-wrap items-center justify-between gap-3 text-muted-foreground">
+          <Badge variant="outline" className="max-w-full bg-background/80">
             {presentation.senderName} for {presentation.recipientName}
           </Badge>
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3 sm:flex-none">
@@ -172,11 +175,18 @@ function PresentationPlayerDeck({
                   aria-current={safeActiveIndex === index ? "step" : undefined}
                   onClick={() => setActiveIndex(index)}
                   className={cn(
-                    "size-2 rounded-full border border-[#171714]/25 bg-background transition-all sm:size-2.5",
-                    safeActiveIndex === index &&
-                      "w-5 border-[#171714] bg-[#171714] sm:w-7",
+                    "grid size-8 place-items-center rounded-[var(--radius-geist-base)] border border-transparent text-foreground transition-[background-color,border-color,box-shadow] focus-geist hover:border-border hover:bg-muted",
+                    safeActiveIndex === index && "border-border bg-muted",
                   )}
-                />
+                >
+                  <span
+                    className={cn(
+                      "block h-2 w-2 rounded-full border border-foreground/25 bg-background transition-[width,background-color,border-color]",
+                      safeActiveIndex === index &&
+                        "w-5 border-foreground bg-foreground",
+                    )}
+                  />
+                </button>
               ))}
             </div>
             <span className="hidden items-center gap-1.5 sm:flex">
@@ -191,21 +201,21 @@ function PresentationPlayerDeck({
           className="grid flex-1 items-center gap-5 py-5 sm:gap-7 sm:py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(260px,0.62fr)] xl:gap-12"
         >
           <article className="min-w-0 max-w-3xl">
-            <p className="mb-4 text-xs font-medium uppercase tracking-[0.16em] text-[#b94735]">
+            <p className="text-label-12 mb-4 uppercase text-muted-foreground">
               {displaySlide.kicker}
             </p>
             <h1
               className={cn(
-                "max-w-[14ch] [overflow-wrap:anywhere] text-balance text-4xl font-semibold leading-[0.98] tracking-normal text-[#171714] sm:max-w-[12ch] sm:text-5xl sm:leading-[0.94] xl:text-6xl",
+                "max-w-[14ch] [overflow-wrap:anywhere] text-balance text-4xl font-semibold leading-[0.98] tracking-normal text-foreground sm:max-w-[12ch] sm:text-5xl sm:leading-[0.94] xl:text-6xl",
                 shared && "sm:text-6xl xl:text-7xl",
               )}
             >
               {displaySlide.title}
             </h1>
-            <p className="mt-6 max-w-xl whitespace-pre-line text-pretty text-base leading-7 text-[#4d4c47] sm:text-lg">
+            <p className="text-copy-16 mt-6 max-w-xl whitespace-pre-line text-pretty text-muted-foreground">
               {displaySlide.body}
             </p>
-            <p className="mt-7 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border bg-[#fffdf8]/90 px-3 py-2 text-sm font-medium text-[#171714] shadow-sm sm:max-w-xl">
+            <p className="text-label-14 mt-7 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-[var(--radius-geist-base)] border bg-background/90 px-3 py-2 text-foreground shadow-sm sm:max-w-xl">
               <BadgeCheckIcon data-icon="inline-start" />
               {displaySlide.verdict}
             </p>
@@ -213,7 +223,7 @@ function PresentationPlayerDeck({
 
           <div className="relative min-h-[250px]">
             {visibleImage ? (
-              <div className="relative mx-auto aspect-[4/5] w-full max-w-[280px] overflow-hidden rounded-lg border bg-background shadow-[0_22px_70px_rgba(22,20,17,0.14)] sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
+              <div className="material-medium relative mx-auto aspect-[4/5] w-full max-w-[280px] overflow-hidden bg-background sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
                 <img
                   src={visibleImage.url}
                   alt={`Photo evidence for ${presentation.recipientName}`}
@@ -231,28 +241,28 @@ function PresentationPlayerDeck({
                 />
               </div>
             ) : (
-              <div className="mx-auto flex aspect-[4/5] w-full max-w-[280px] flex-col justify-between rounded-lg border bg-[#171714] p-5 text-[#fffdf8] shadow-[0_22px_70px_rgba(22,20,17,0.18)] sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
-                <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-[#fffdf8]/60">
+              <div className="material-medium mx-auto flex aspect-[4/5] w-full max-w-[280px] flex-col justify-between bg-foreground p-5 text-background sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
+                <div className="text-label-12 flex items-center justify-between uppercase text-background/60">
                   <span>LP-01</span>
                   <span>{displaySlide.kicker}</span>
                 </div>
                 <div className="text-center">
                   <p className="text-[4.5rem] font-semibold leading-none tracking-normal sm:text-[6rem]">
                     {senderInitial}
-                    <span className="text-[#d95d48]">+</span>
+                    <span className="text-background/70">+</span>
                     {recipientInitial}
                   </p>
-                  <p className="mt-3 text-sm text-[#fffdf8]/70">
+                  <p className="text-copy-14 mt-3 text-background/70">
                     compatibility memo
                   </p>
                 </div>
-                <div className="grid gap-2 text-sm">
+                <div className="text-copy-14 grid gap-2">
                   <div className="flex items-center justify-between border-t border-white/15 pt-2">
-                    <span className="text-[#fffdf8]/60">compatibility</span>
+                    <span className="text-background/60">compatibility</span>
                     <span>{metrics.compatibility}%</span>
                   </div>
                   <div className="flex items-center justify-between border-t border-white/15 pt-2">
-                    <span className="text-[#fffdf8]/60">leaving</span>
+                    <span className="text-background/60">leaving</span>
                     <span>{metrics.leavingRecommendation}</span>
                   </div>
                 </div>
@@ -261,7 +271,7 @@ function PresentationPlayerDeck({
           </div>
         </div>
 
-        <div className="rounded-lg border bg-[#fffdf8]/88 p-3 shadow-sm backdrop-blur">
+        <div className="material-small bg-background/88 p-3 backdrop-blur">
           <div className="love-objectivity-meter">
             <span>Objectivity</span>
             <div aria-hidden="true">
@@ -270,12 +280,16 @@ function PresentationPlayerDeck({
             <strong>{objectivity}%</strong>
           </div>
 
-          <Progress value={progress}>
+          <Progress
+            value={progressValue}
+            max={progressMax}
+            aria-label="Slide progress"
+          >
             <ProgressLabel>
               Slide {safeActiveIndex + 1} of {presentation.slides.length}
             </ProgressLabel>
-            <span className="ml-auto text-sm text-muted-foreground tabular-nums">
-              {Math.round(progress)}%
+            <span className="text-label-14 ml-auto text-muted-foreground tabular-nums">
+              {progressPercent}%
             </span>
           </Progress>
 
@@ -310,7 +324,7 @@ function PresentationPlayerDeck({
             </Button>
           </div>
           {worseLevel >= 5 ? (
-            <p className="mt-2 text-center text-xs text-[#b94735]">
+            <p className="text-label-12 mt-2 text-center text-destructive">
               Legal has asked us to stop.
             </p>
           ) : null}

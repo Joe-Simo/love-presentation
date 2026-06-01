@@ -34,7 +34,7 @@ export function SharedPresentation() {
   if (!hasReadHash) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background p-6 text-center">
-        <p className="text-sm text-muted-foreground">Opening presentation...</p>
+        <p className="text-copy-14 text-muted-foreground">Opening presentation...</p>
       </main>
     );
   }
@@ -42,12 +42,12 @@ export function SharedPresentation() {
   if (!presentation) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background p-6 text-center">
-        <div className="max-w-md rounded-lg border bg-card p-5 shadow-sm">
-          <h1 className="text-xl font-semibold">This deck is gone</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+        <div className="material-medium w-full max-w-sm p-5">
+          <h1 className="text-heading-20">This deck is gone</h1>
+          <p className="text-copy-14 mt-2 text-pretty text-muted-foreground">
             This deck link is incomplete or broken.
           </p>
-          <Button className="mt-5" render={<Link href="/" />}>
+          <Button className="mt-5" nativeButton={false} render={<Link href="/" />}>
             Make a new one
           </Button>
         </div>

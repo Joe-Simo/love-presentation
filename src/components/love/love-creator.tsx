@@ -182,10 +182,13 @@ export function LoveCreator() {
   const [insideJoke, setInsideJoke] = useState("");
   const [imageUrlsText, setImageUrlsText] = useState("");
   const [share, setShare] = useState<ShareState | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const cardContentRef = useRef<HTMLDivElement>(null);
   const stampRef = useRef<HTMLDivElement>(null);
+  const senderInputRef = useRef<HTMLInputElement>(null);
+  const recipientInputRef = useRef<HTMLInputElement>(null);
 
   const compromiseIndex = compromiseLevels.findIndex(
     (level) => level.value === compromiseLevel,
@@ -197,6 +200,14 @@ export function LoveCreator() {
   const isSelfLove =
     normalizeName(senderName) !== "" &&
     normalizeName(senderName) === normalizeName(recipientName);
+  const senderError =
+    submitAttempted && senderName.trim().length === 0
+      ? "From name is required."
+      : "";
+  const recipientError =
+    submitAttempted && recipientName.trim().length === 0
+      ? "To name is required."
+      : "";
   const canCreate =
     senderName.trim().length > 0 && recipientName.trim().length > 0;
 
@@ -262,6 +273,23 @@ export function LoveCreator() {
   }, [compromiseLevel]);
 
   function createPresentation() {
+    setSubmitAttempted(true);
+
+    const missingSender = senderName.trim().length === 0;
+    const missingRecipient = recipientName.trim().length === 0;
+
+    if (missingSender || missingRecipient) {
+      requestAnimationFrame(() => {
+        if (missingSender) {
+          senderInputRef.current?.focus();
+          return;
+        }
+
+        recipientInputRef.current?.focus();
+      });
+      return;
+    }
+
     try {
       const payload = createSharePayload({
         senderName,
@@ -283,9 +311,9 @@ export function LoveCreator() {
         shareUrl: shareUrl.toString(),
       });
       animateStamp();
-      toast.success("Deck created.");
+      toast.success("Deck created");
     } catch {
-      toast.error("Check the names and photo links.");
+      toast.error("Couldn’t create deck. Check photo links and try again.");
     }
   }
 
@@ -294,9 +322,9 @@ export function LoveCreator() {
 
     try {
       await navigator.clipboard.writeText(share.shareUrl);
-      toast.success("Link copied.");
+      toast.success("Link copied");
     } catch {
-      toast.error("Could not copy the link.");
+      toast.error("Couldn’t copy link. Copy it manually.");
     }
   }
 
@@ -382,9 +410,12 @@ export function LoveCreator() {
             }}
           >
             <div className="love-name-grid">
-              <label className="love-field">
+              <label className="love-field" htmlFor="love-sender-name">
                 <span>From</span>
                 <input
+                  id="love-sender-name"
+                  ref={senderInputRef}
+                  name="senderName"
                   value={senderName}
                   onChange={(event) => {
                     setSenderName(event.target.value);
@@ -392,11 +423,21 @@ export function LoveCreator() {
                   }}
                   maxLength={48}
                   autoComplete="name"
+                  aria-invalid={senderError ? true : undefined}
+                  aria-describedby={senderError ? "love-sender-name-error" : undefined}
                 />
+                {senderError ? (
+                  <small id="love-sender-name-error" className="love-field-error">
+                    {senderError}
+                  </small>
+                ) : null}
               </label>
-              <label className="love-field">
+              <label className="love-field" htmlFor="love-recipient-name">
                 <span>To</span>
                 <input
+                  id="love-recipient-name"
+                  ref={recipientInputRef}
+                  name="recipientName"
                   value={recipientName}
                   onChange={(event) => {
                     setRecipientName(event.target.value);
@@ -404,7 +445,16 @@ export function LoveCreator() {
                   }}
                   maxLength={48}
                   autoComplete="off"
+                  aria-invalid={recipientError ? true : undefined}
+                  aria-describedby={
+                    recipientError ? "love-recipient-name-error" : undefined
+                  }
                 />
+                {recipientError ? (
+                  <small id="love-recipient-name-error" className="love-field-error">
+                    {recipientError}
+                  </small>
+                ) : null}
               </label>
             </div>
 
@@ -416,16 +466,21 @@ export function LoveCreator() {
                   const selected = vibe === option.value;
 
                   return (
-                    <button
+                    <label
                       key={option.value}
-                      type="button"
                       className={cn("love-tone", selected && "is-selected")}
-                      aria-pressed={selected}
-                      onClick={() => {
-                        setVibe(option.value);
-                        setShare(null);
-                      }}
                     >
+                      <input
+                        className="love-tone-input"
+                        type="radio"
+                        name="loveVibe"
+                        value={option.value}
+                        checked={selected}
+                        onChange={() => {
+                          setVibe(option.value);
+                          setShare(null);
+                        }}
+                      />
                       <span className="love-radio" aria-hidden="true">
                         {selected ? <span /> : null}
                       </span>
@@ -434,7 +489,7 @@ export function LoveCreator() {
                         <strong>{option.label}</strong>
                         <small>{option.description}</small>
                       </span>
-                    </button>
+                    </label>
                   );
                 })}
               </div>
@@ -442,6 +497,9 @@ export function LoveCreator() {
 
             <fieldset className="love-compromise-field">
               <legend>Emotional compromise</legend>
+              <output className="love-compromise-value" aria-live="polite">
+                {compromiseLevels[safeCompromiseIndex]?.label}
+              </output>
               <input
                 aria-label="Emotional compromise"
                 type="range"
@@ -489,11 +547,18 @@ export function LoveCreator() {
             <button
               className="love-submit"
               type="submit"
-              disabled={!canCreate}
+              aria-describedby={
+                submitAttempted && !canCreate ? "love-submit-help" : undefined
+              }
             >
               <span>Create private link</span>
               <ArrowRightIcon aria-hidden="true" />
             </button>
+            {submitAttempted && !canCreate ? (
+              <p id="love-submit-help" className="love-submit-help">
+                Add both names to create a link.
+              </p>
+            ) : null}
 
             <div className="love-privacy">
               <LockKeyholeIcon aria-hidden="true" />

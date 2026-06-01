@@ -19,6 +19,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 import {
   createSharePayload,
   encodeSharePayload,
@@ -114,10 +115,21 @@ export function PublicLoveSite() {
   const [vibe, setVibe] = useState<PresentationVibe>("boardroom");
   const [compromiseIndex, setCompromiseIndex] = useState(2);
   const [shareUrl, setShareUrl] = useState("");
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const senderInputRef = useRef<HTMLInputElement>(null);
+  const recipientInputRef = useRef<HTMLInputElement>(null);
 
   const compromise = compromiseOptions[compromiseIndex] ?? compromiseOptions[2];
   const recipientLabel = recipientName.trim() || "Recipient";
   const initials = `${initialFor(senderName)}+${initialFor(recipientName)}`;
+  const senderError =
+    submitAttempted && senderName.trim().length === 0
+      ? "From name is required."
+      : "";
+  const recipientError =
+    submitAttempted && recipientName.trim().length === 0
+      ? "To name is required."
+      : "";
   const canCreate =
     senderName.trim().length > 0 && recipientName.trim().length > 0;
 
@@ -174,7 +186,22 @@ export function PublicLoveSite() {
   }
 
   function createPresentation() {
-    if (!canCreate) return;
+    setSubmitAttempted(true);
+
+    const missingSender = senderName.trim().length === 0;
+    const missingRecipient = recipientName.trim().length === 0;
+
+    if (missingSender || missingRecipient) {
+      requestAnimationFrame(() => {
+        if (missingSender) {
+          senderInputRef.current?.focus();
+          return;
+        }
+
+        recipientInputRef.current?.focus();
+      });
+      return;
+    }
 
     try {
       const payload = createSharePayload({
@@ -195,9 +222,9 @@ export function PublicLoveSite() {
 
       setShareUrl(nextUrl.toString());
       setActiveWindow("status");
-      toast.success("Private link created.");
+      toast.success("Private link created");
     } catch {
-      toast.error("The committee rejected those inputs.");
+      toast.error("Couldn’t create link. Try again.");
     }
   }
 
@@ -206,9 +233,9 @@ export function PublicLoveSite() {
 
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success("Link copied.");
+      toast.success("Link copied");
     } catch {
-      toast.error("Clipboard declined to participate.");
+      toast.error("Couldn’t copy link. Copy it manually.");
     }
   }
 
@@ -245,7 +272,10 @@ export function PublicLoveSite() {
           <p className="public-love-command" data-public-love-reveal>
             $ love-presentation new
           </p>
-          <h1 data-public-love-reveal>Love Presentation</h1>
+          <h1 data-public-love-reveal>
+            <span>Love</span>
+            <span>Presentation</span>
+          </h1>
           <p className="public-love-hero-line" data-public-love-reveal>
             Emotionally compromised presentation software.
           </p>
@@ -306,31 +336,63 @@ export function PublicLoveSite() {
               </div>
 
               <div className="public-love-field-grid">
-                <label className="public-love-field">
+                <label className="public-love-field" htmlFor="public-love-sender">
                   <span>From</span>
-                  <input
+                  <Input
+                    id="public-love-sender"
+                    ref={senderInputRef}
+                    name="senderName"
+                    className="public-love-input"
                     value={senderName}
                     onChange={(event) => {
                       setSenderName(event.target.value);
                       resetShare();
                     }}
                     maxLength={48}
-                    placeholder="Your name"
+                    placeholder="Joseph"
                     autoComplete="name"
+                    aria-invalid={senderError ? true : undefined}
+                    aria-describedby={
+                      senderError ? "public-love-sender-error" : undefined
+                    }
                   />
+                  {senderError ? (
+                    <small
+                      id="public-love-sender-error"
+                      className="public-love-field-error"
+                    >
+                      {senderError}
+                    </small>
+                  ) : null}
                 </label>
-                <label className="public-love-field">
+                <label className="public-love-field" htmlFor="public-love-recipient">
                   <span>To</span>
-                  <input
+                  <Input
+                    id="public-love-recipient"
+                    ref={recipientInputRef}
+                    name="recipientName"
+                    className="public-love-input"
                     value={recipientName}
                     onChange={(event) => {
                       setRecipientName(event.target.value);
                       resetShare();
                     }}
                     maxLength={48}
-                    placeholder="Their name"
+                    placeholder="Antoneta"
                     autoComplete="off"
+                    aria-invalid={recipientError ? true : undefined}
+                    aria-describedby={
+                      recipientError ? "public-love-recipient-error" : undefined
+                    }
                   />
+                  {recipientError ? (
+                    <small
+                      id="public-love-recipient-error"
+                      className="public-love-field-error"
+                    >
+                      {recipientError}
+                    </small>
+                  ) : null}
                 </label>
               </div>
 
@@ -338,27 +400,42 @@ export function PublicLoveSite() {
                 <legend>Tone</legend>
                 <div className="public-love-tone-list">
                   {toneOptions.map((option) => (
-                    <button
+                    <label
                       key={option.value}
-                      type="button"
-                      aria-pressed={vibe === option.value}
                       className="public-love-tone"
                       data-selected={vibe === option.value}
-                      onClick={() => {
-                        setVibe(option.value);
-                        resetShare();
-                      }}
                     >
+                      <input
+                        type="radio"
+                        name="presentationVibe"
+                        value={option.value}
+                        checked={vibe === option.value}
+                        onChange={() => {
+                          setVibe(option.value);
+                          resetShare();
+                        }}
+                      />
+                      <span className="public-love-tone-check" aria-hidden="true">
+                        <CheckIcon />
+                      </span>
                       <span>{option.label}</span>
                       <small>{option.description}</small>
-                    </button>
+                    </label>
                   ))}
                 </div>
               </fieldset>
 
-              <label className="public-love-range-field">
+              <label className="public-love-range-field" htmlFor="public-love-compromise">
                 <span>Emotional compromise</span>
+                <output
+                  className="public-love-range-value"
+                  htmlFor="public-love-compromise"
+                  aria-live="polite"
+                >
+                  {compromise.label}
+                </output>
                 <input
+                  id="public-love-compromise"
                   type="range"
                   min={0}
                   max={compromiseOptions.length - 1}
@@ -384,11 +461,20 @@ export function PublicLoveSite() {
               <button
                 className="public-love-submit"
                 type="submit"
-                disabled={!canCreate}
+                aria-describedby={
+                  submitAttempted && !canCreate
+                    ? "public-love-submit-help"
+                    : undefined
+                }
               >
                 Create private link
                 <ArrowRightIcon aria-hidden="true" />
               </button>
+              {submitAttempted && !canCreate ? (
+                <p id="public-love-submit-help" className="public-love-submit-help">
+                  Add both names to create a link.
+                </p>
+              ) : null}
             </form>
           </WindowShell>
 
@@ -580,19 +666,25 @@ function WindowShell({
     <article
       className={`public-love-window ${className}`}
       data-active={isActive}
-      onClick={() => onActivate(id)}
-      onFocus={() => onActivate(id)}
-      tabIndex={0}
       aria-label={`${title} window`}
     >
       <div className="public-love-window-bar">
-        <span className="public-love-window-dots" aria-hidden="true">
-          <i />
-          <i />
-          <i />
+        <button
+          className="public-love-window-activate"
+          type="button"
+          onClick={() => onActivate(id)}
+          aria-label={`Activate ${title} window`}
+        >
+          <span className="public-love-window-dots" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <strong>{title}</strong>
+        </button>
+        <span className="public-love-window-status">
+          {status ?? (isActive ? "active" : "idle")}
         </span>
-        <strong>{title}</strong>
-        <span>{status ?? (isActive ? "active" : "idle")}</span>
       </div>
       {children}
     </article>
