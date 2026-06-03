@@ -49,6 +49,13 @@ export function sanitizeImageUrls(values: string[]) {
   return imageUrlsSchema.parse(imageUrls);
 }
 
+export function parseImageUrlText(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((url) => url.trim())
+    .filter(Boolean);
+}
+
 export function presentationFromPayload(
   payload: SharePayload,
 ): PublicPresentation {

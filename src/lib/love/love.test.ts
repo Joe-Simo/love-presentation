@@ -5,6 +5,7 @@ import {
   createSharePayload,
   decodeSharePayload,
   encodeSharePayload,
+  parseImageUrlText,
   presentationFromPayload,
   sanitizeImageUrls,
 } from "@/lib/love/share";
@@ -185,8 +186,44 @@ describe("love presentation generation", () => {
     expect(sanitizeImageUrls(["", " https://example.com/photo.jpg "])).toEqual([
       "https://example.com/photo.jpg",
     ]);
+    expect(
+      parseImageUrlText(
+        "https://example.com/photo.jpg?crop=0,0,1,1\nhttps://example.com/two.webp",
+      ),
+    ).toEqual([
+      "https://example.com/photo.jpg?crop=0,0,1,1",
+      "https://example.com/two.webp",
+    ]);
     expect(() => sanitizeImageUrls(["http://example.com/photo.jpg"])).toThrow();
     expect(() => sanitizeImageUrls(["data:image/svg+xml;base64,abc"])).toThrow();
+  });
+
+  test("prioritizes supplied images in compromise decks", () => {
+    const imageAssets = Array.from({ length: 5 }, (_, index) => ({
+      id: `asset_${index + 1}`,
+      url: `https://example.com/${index + 1}.webp`,
+      width: 1000,
+      height: 1200,
+    }));
+    const slides = createSlides({
+      senderName: "Joe",
+      recipientName: "Ana",
+      vibe: "boardroom",
+      seed: "fixed",
+      deckLength: "7",
+      dramaLevel: "dramatic",
+      compromiseLevel: "compromised",
+      occasion: "just-because",
+      assets: imageAssets,
+    });
+
+    expect(slides).toHaveLength(7);
+    expect(slides.filter((slide) => slide.imageAssetId)).toHaveLength(3);
+    expect(slides.map((slide) => slide.imageAssetId).filter(Boolean)).toEqual([
+      "asset_1",
+      "asset_2",
+      "asset_3",
+    ]);
   });
 
   test("round-trips self-contained share links", () => {

@@ -95,3 +95,9 @@ export const creatorFieldsSchema = sharePayloadSchema.pick({
   insideJoke: true,
   imageUrls: true,
 });
+
+export const createPresentationResponseSchema = z.object({
+  token: shareTokenSchema,
+});
+
+export type CreatorFields = z.infer<typeof creatorFieldsSchema>;

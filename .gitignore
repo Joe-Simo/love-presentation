@@ -38,6 +38,7 @@ yarn-error.log*
 
 # local browser verification artifacts
 .playwright-mcp/
+/output/playwright/
 
 # typescript
 *.tsbuildinfo

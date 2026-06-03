@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { createLoveMetrics } from "@/lib/love/metrics";
+import { firstGrapheme } from "@/lib/love/text";
 import type { LoveSlide, PublicPresentation } from "@/lib/love/types";
 import { DeckScene } from "@/components/love/deck-scene";
 
@@ -50,7 +51,10 @@ function PresentationPlayerDeck({
 }: PresentationPlayerProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [worseLevel, setWorseLevel] = useState(0);
-  const [failedImageIds, setFailedImageIds] = useState<ReadonlySet<string>>(
+  const [imageLoadAttempts, setImageLoadAttempts] = useState<
+    Record<string, 0 | 1 | 2>
+  >({});
+  const [loadedImageKeys, setLoadedImageKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
   const slideRef = useRef<HTMLDivElement>(null);
@@ -62,9 +66,14 @@ function PresentationPlayerDeck({
   const image = slide?.imageAssetId
     ? presentation.assets.find((asset) => asset.id === slide.imageAssetId)
     : undefined;
-  const visibleImage = image && !failedImageIds.has(image.id) ? image : undefined;
-  const senderInitial = presentation.senderName.slice(0, 1).toUpperCase();
-  const recipientInitial = presentation.recipientName.slice(0, 1).toUpperCase();
+  const imageLoadAttempt = image ? imageLoadAttempts[image.id] ?? 0 : 0;
+  const visibleImage = image && imageLoadAttempt < 2 ? image : undefined;
+  const imageLoadKey = visibleImage
+    ? `${visibleImage.id}-${imageLoadAttempt}`
+    : "";
+  const imageLoaded = imageLoadKey ? loadedImageKeys.has(imageLoadKey) : false;
+  const senderInitial = firstGrapheme(presentation.senderName);
+  const recipientInitial = firstGrapheme(presentation.recipientName);
   const slideProgress =
     presentation.slides.length > 1
       ? (safeActiveIndex / (presentation.slides.length - 1)) * 100
@@ -106,15 +115,8 @@ function PresentationPlayerDeck({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target;
-      const tagName =
-        target instanceof HTMLElement ? target.tagName.toLowerCase() : "";
 
-      if (
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select" ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
+      if (isInteractiveKeyTarget(target)) {
         return;
       }
 
@@ -135,6 +137,27 @@ function PresentationPlayerDeck({
 
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [presentation.slides.length]);
+
+  useEffect(() => {
+    if (!visibleImage || imageLoaded) return;
+
+    const timeout = window.setTimeout(() => {
+      setImageLoadAttempts((current) => {
+        const currentAttempt = current[visibleImage.id] ?? 0;
+
+        if (currentAttempt !== imageLoadAttempt) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [visibleImage.id]: imageLoadAttempt === 0 ? 1 : 2,
+        };
+      });
+    }, 3000);
+
+    return () => window.clearTimeout(timeout);
+  }, [imageLoadAttempt, imageLoaded, visibleImage]);
 
   if (!slide || !displaySlide) {
     return null;
@@ -224,24 +247,50 @@ function PresentationPlayerDeck({
           <div className="relative min-h-[250px]">
             {visibleImage ? (
               <div className="material-medium relative mx-auto aspect-[4/5] w-full max-w-[280px] overflow-hidden bg-background sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
+                {!imageLoaded ? (
+                  <div className="text-label-13 absolute inset-0 z-10 grid place-items-center bg-background text-muted-foreground">
+                    Loading photo...
+                  </div>
+                ) : null}
                 <img
+                  key={imageLoadKey}
                   src={visibleImage.url}
                   alt={`Photo evidence for ${presentation.recipientName}`}
-                  className="size-full object-cover"
+                  className={cn(
+                    "size-full object-cover transition-opacity",
+                    imageLoaded ? "opacity-100" : "opacity-0",
+                  )}
                   decoding="async"
                   loading="lazy"
                   referrerPolicy="no-referrer"
                   onError={() =>
-                    setFailedImageIds((current) => {
-                      const next = new Set(current);
-                      next.add(visibleImage.id);
-                      return next;
-                    })
+                    setImageLoadAttempts((current) => ({
+                      ...current,
+                      [visibleImage.id]: imageLoadAttempt === 0 ? 1 : 2,
+                    }))
                   }
+                  onLoad={(event) => {
+                    if (
+                      event.currentTarget.naturalWidth === 0 ||
+                      event.currentTarget.naturalHeight === 0
+                    ) {
+                      setImageLoadAttempts((current) => ({
+                        ...current,
+                        [visibleImage.id]: imageLoadAttempt === 0 ? 1 : 2,
+                      }));
+                      return;
+                    }
+
+                    setLoadedImageKeys((current) => {
+                      const next = new Set(current);
+                      next.add(imageLoadKey);
+                      return next;
+                    });
+                  }}
                 />
               </div>
             ) : (
-              <div className="material-medium mx-auto flex aspect-[4/5] w-full max-w-[280px] flex-col justify-between bg-foreground p-5 text-background sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
+              <div className="mx-auto flex aspect-[4/5] w-full max-w-[280px] flex-col justify-between overflow-hidden rounded-[var(--radius-geist-raised)] border border-border bg-foreground p-5 text-background shadow-[var(--geist-shadow-medium)] sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
                 <div className="text-label-12 flex items-center justify-between uppercase text-background/60">
                   <span>LP-01</span>
                   <span>{displaySlide.kicker}</span>
@@ -366,6 +415,29 @@ function intensifySlide(
         ? "Verdict: approved, unfortunately, dramatically."
         : slide.verdict,
   };
+}
+
+function isInteractiveKeyTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest(
+      [
+        "a",
+        "button",
+        "input",
+        "textarea",
+        "select",
+        "summary",
+        "[contenteditable='true']",
+        "[role='button']",
+        "[role='link']",
+        "[role='menuitem']",
+      ].join(","),
+    ),
+  );
 }
 
 function FinalConfetti() {

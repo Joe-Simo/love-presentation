@@ -22,13 +22,23 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-    });
+    let renderer: THREE.WebGLRenderer;
+
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: true,
+      });
+    } catch {
+      return;
+    }
+
     renderer.setClearColor("#f8f4ec", 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
     const scene = new THREE.Scene();
 
@@ -83,6 +93,7 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
     };
 
     const resizeObserver = new ResizeObserver(resize);
@@ -91,6 +102,18 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
 
     const timer = new THREE.Timer();
     let frameId = 0;
+
+    if (reducedMotion) {
+      renderer.render(scene, camera);
+
+      return () => {
+        resizeObserver.disconnect();
+        cardGeometry.dispose();
+        activeMaterial.dispose();
+        restingMaterial.dispose();
+        renderer.dispose();
+      };
+    }
 
     const animate = () => {
       timer.update();

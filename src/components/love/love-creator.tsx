@@ -14,10 +14,8 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  createSharePayload,
-  encodeSharePayload,
-} from "@/lib/love/share";
+import { createPresentationShareUrl } from "@/lib/love/create-presentation";
+import { parseImageUrlText } from "@/lib/love/share";
 import type {
   CompromiseLevel,
   DeckLengthChoice,
@@ -183,6 +181,7 @@ export function LoveCreator() {
   const [imageUrlsText, setImageUrlsText] = useState("");
   const [share, setShare] = useState<ShareState | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const cardContentRef = useRef<HTMLDivElement>(null);
@@ -272,7 +271,9 @@ export function LoveCreator() {
     };
   }, [compromiseLevel]);
 
-  function createPresentation() {
+  async function createPresentation() {
+    if (isCreating) return;
+
     setSubmitAttempted(true);
 
     const missingSender = senderName.trim().length === 0;
@@ -290,8 +291,10 @@ export function LoveCreator() {
       return;
     }
 
+    setIsCreating(true);
+
     try {
-      const payload = createSharePayload({
+      const shareUrl = await createPresentationShareUrl({
         senderName,
         recipientName,
         vibe,
@@ -300,20 +303,22 @@ export function LoveCreator() {
         compromiseLevel,
         occasion,
         insideJoke,
-        imageUrls: splitImageUrls(imageUrlsText),
-        seed: crypto.randomUUID(),
+        imageUrls: parseImageUrlText(imageUrlsText),
       });
-      const token = encodeSharePayload(payload);
-      const shareUrl = new URL("/p", window.location.origin);
-      shareUrl.hash = token;
 
       setShare({
-        shareUrl: shareUrl.toString(),
+        shareUrl,
       });
       animateStamp();
       toast.success("Deck created");
-    } catch {
-      toast.error("Couldn’t create deck. Check photo links and try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Couldn't create deck. Check photo links and try again.",
+      );
+    } finally {
+      setIsCreating(false);
     }
   }
 
@@ -324,7 +329,7 @@ export function LoveCreator() {
       await navigator.clipboard.writeText(share.shareUrl);
       toast.success("Link copied");
     } catch {
-      toast.error("Couldn’t copy link. Copy it manually.");
+      toast.error("Couldn’t copy. Select the link below.");
     }
   }
 
@@ -547,11 +552,13 @@ export function LoveCreator() {
             <button
               className="love-submit"
               type="submit"
+              disabled={isCreating}
+              aria-busy={isCreating}
               aria-describedby={
                 submitAttempted && !canCreate ? "love-submit-help" : undefined
               }
             >
-              <span>Create private link</span>
+              <span>{isCreating ? "Creating link..." : "Create private link"}</span>
               <ArrowRightIcon aria-hidden="true" />
             </button>
             {submitAttempted && !canCreate ? (
@@ -754,13 +761,6 @@ export function LoveCreator() {
 
 function normalizeName(name: string) {
   return name.trim().toLowerCase();
-}
-
-function splitImageUrls(value: string) {
-  return value
-    .split(/[\n,]+/)
-    .map((url) => url.trim())
-    .filter(Boolean);
 }
 
 function GithubMark() {

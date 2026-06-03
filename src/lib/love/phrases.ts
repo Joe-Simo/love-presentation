@@ -666,7 +666,6 @@ function createCompromiseArc(input: SlideInput): LoveSlide[] {
   const insideJoke = input.insideJoke?.trim();
   const compromiseLevel = input.compromiseLevel ?? "suspicious";
   const compromise = compromiseArcCopy[compromiseLevel];
-  const firstAsset = input.assets[0];
 
   const baseSlides: LoveSlide[] = [
     {
@@ -720,7 +719,6 @@ function createCompromiseArc(input: SlideInput): LoveSlide[] {
         ? `Several witnesses confirm they are annoying in the best way. The phrase "${insideJoke}" has also been entered into evidence.`
         : "Several witnesses confirm they are annoying in the best way. Nobody is neutral enough to object.",
       verdict: "Witness credibility: emotionally compromised.",
-      imageAssetId: firstAsset?.id,
     },
     {
       id: "risk-assessment",
@@ -740,6 +738,33 @@ function createCompromiseArc(input: SlideInput): LoveSlide[] {
     },
   ];
 
+  const imageSlides = input.assets.slice(0, 5).map((asset, index) => ({
+    id: `photo-${asset.id}`,
+    kicker: `Exhibit ${String.fromCharCode(65 + index)}`,
+    title: pick(pack.captions),
+    body: `${recipientName}, please observe the attached evidence and try to act normal.`,
+    verdict: pick(pack.verdicts),
+    imageAssetId: asset.id,
+  }));
+
+  if (imageSlides.length > 0 && targetCount <= baseSlides.length + imageSlides.length) {
+    const baseBeforeFinal = baseSlides.slice(0, -1);
+    const baseSlideCount = Math.min(
+      baseBeforeFinal.length,
+      Math.max(3, targetCount - imageSlides.length - 1),
+    );
+    const selectedImageSlides = imageSlides.slice(
+      0,
+      targetCount - baseSlideCount - 1,
+    );
+
+    return [
+      ...baseBeforeFinal.slice(0, Math.max(baseSlideCount, 1)),
+      ...selectedImageSlides,
+      baseSlides[baseSlides.length - 1] as LoveSlide,
+    ];
+  }
+
   if (targetCount <= baseSlides.length) {
     return [
       ...baseSlides.slice(0, Math.max(targetCount - 1, 1)),
@@ -757,15 +782,8 @@ function createCompromiseArc(input: SlideInput): LoveSlide[] {
     pack,
     pick,
   };
-  const imageSlides = input.assets.slice(1, 5).map((asset, index) => ({
-    id: `photo-${asset.id}`,
-    kicker: `Exhibit ${String.fromCharCode(66 + index)}`,
-    title: pick(pack.captions),
-    body: `${recipientName}, please observe the attached evidence and try to act normal.`,
-    verdict: pick(pack.verdicts),
-    imageAssetId: asset.id,
-  }));
   const extraCandidates = collectUniqueSlides([
+    ...imageSlides,
     ...(insideJoke
       ? [
           {
@@ -788,7 +806,6 @@ function createCompromiseArc(input: SlideInput): LoveSlide[] {
       body: dramaCopy[dramaLevel].body,
       verdict: dramaCopy[dramaLevel].verdict,
     },
-    ...imageSlides,
     ...shuffle(buildProceduralSlides(context, 12), random),
   ]);
 

@@ -4,26 +4,25 @@ import { gsap } from "gsap";
 import {
   ArrowRightIcon,
   CheckIcon,
-  ClipboardIcon,
   CopyIcon,
   ExternalLinkIcon,
   HeartIcon,
-  ImageIcon,
   LinkIcon,
   LockKeyholeIcon,
-  MonitorIcon,
+  ShieldCheckIcon,
   SparklesIcon,
-  TerminalIcon,
 } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { createPresentationShareUrl } from "@/lib/love/create-presentation";
 import {
-  createSharePayload,
-  encodeSharePayload,
+  parseImageUrlText,
+  sanitizeImageUrls,
 } from "@/lib/love/share";
+import { firstGrapheme } from "@/lib/love/text";
 import type {
   CompromiseLevel,
   DramaLevel,
@@ -31,6 +30,11 @@ import type {
 } from "@/lib/love/types";
 
 type WindowId = "compose" | "preview" | "status";
+type FieldErrors = {
+  senderName?: string;
+  recipientName?: string;
+  imageUrls?: string;
+};
 
 type ToneOption = {
   value: PresentationVibe;
@@ -42,117 +46,99 @@ const toneOptions: ToneOption[] = [
   {
     value: "boardroom",
     label: "Boardroom",
-    description: "Very official.",
+    description: "Formal memo.",
   },
   {
     value: "chaos",
     label: "Chaotic",
-    description: "Legally unstable.",
+    description: "Zero chill.",
   },
   {
     value: "sincere",
     label: "Soft Roast",
-    description: "Sweet, with notes.",
+    description: "Warm proof.",
+  },
+];
+
+const proofItems: Array<{
+  label: string;
+  value: string;
+  icon: typeof LockKeyholeIcon;
+}> = [
+  {
+    label: "Privacy",
+    value: "URL-only",
+    icon: LockKeyholeIcon,
+  },
+  {
+    label: "Media",
+    value: "No uploads",
+    icon: ShieldCheckIcon,
+  },
+  {
+    label: "Output",
+    value: "One link",
+    icon: LinkIcon,
   },
 ];
 
 const compromiseOptions: Array<{
   value: CompromiseLevel;
   label: string;
-  terminalLine: string;
 }> = [
   {
     value: "objective",
     label: "Objective",
-    terminalLine: "neutrality intact",
   },
   {
     value: "suspicious",
     label: "Suspicious",
-    terminalLine: "chemistry detected",
   },
   {
     value: "compromised",
     label: "Compromised",
-    terminalLine: "presenter bias likely",
   },
   {
     value: "unwell",
     label: "Unwell",
-    terminalLine: "legal has concerns",
   },
 ];
-
-const methodItems = [
-  {
-    icon: LockKeyholeIcon,
-    title: "Private by design",
-    body: "The deck lives in the URL. There is no account, upload queue, or romantic CRM.",
-  },
-  {
-    icon: TerminalIcon,
-    title: "Local generation",
-    body: "The jokes are templates, not AI. The judgment is still questionable.",
-  },
-  {
-    icon: LinkIcon,
-    title: "Shareable output",
-    body: "Send one link. Receive one reaction. Possibly several follow-up texts.",
-  },
-];
-
-const evidenceRows = [
-  ["PROJECT", "Private love deck"],
-  ["ROLE", "Biased presenter"],
-  ["STATUS", "Approved, unfortunately"],
-] as const;
 
 export function PublicLoveSite() {
   const rootRef = useRef<HTMLElement>(null);
   const [activeWindow, setActiveWindow] = useState<WindowId>("compose");
   const [senderName, setSenderName] = useState("");
   const [recipientName, setRecipientName] = useState("");
+  const [imageUrlsText, setImageUrlsText] = useState("");
   const [vibe, setVibe] = useState<PresentationVibe>("boardroom");
   const [compromiseIndex, setCompromiseIndex] = useState(2);
   const [shareUrl, setShareUrl] = useState("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [heroArtFailed, setHeroArtFailed] = useState(false);
   const senderInputRef = useRef<HTMLInputElement>(null);
   const recipientInputRef = useRef<HTMLInputElement>(null);
 
   const compromise = compromiseOptions[compromiseIndex] ?? compromiseOptions[2];
+  const selectedTone =
+    toneOptions.find((option) => option.value === vibe) ?? toneOptions[0];
   const recipientLabel = recipientName.trim() || "Recipient";
-  const initials = `${initialFor(senderName)}+${initialFor(recipientName)}`;
-  const senderError =
-    submitAttempted && senderName.trim().length === 0
-      ? "From name is required."
-      : "";
-  const recipientError =
-    submitAttempted && recipientName.trim().length === 0
-      ? "To name is required."
-      : "";
+  const photoCount = parseImageUrlText(imageUrlsText).length;
+  const initials = `${firstGrapheme(senderName)}+${firstGrapheme(recipientName)}`;
+  const senderError = fieldErrors.senderName ?? "";
+  const recipientError = fieldErrors.recipientName ?? "";
+  const imageUrlsError = fieldErrors.imageUrls ?? "";
   const canCreate =
     senderName.trim().length > 0 && recipientName.trim().length > 0;
-
-  const terminalLines = useMemo(
-    () => [
-      "$ love-presentation generate",
-      `✓ tone: ${toneOptions.find((option) => option.value === vibe)?.label ?? "Boardroom"}`,
-      `✓ compromise: ${compromise.terminalLine}`,
-      "✓ storage: none",
-      shareUrl ? "✓ private link ready" : "• awaiting two names",
-    ],
-    [compromise.terminalLine, shareUrl, vibe],
-  );
+  const previewIndex = Math.min(compromiseIndex + 3, 7);
+  const previewCopy = previewCopyFor(vibe, compromise.value, recipientLabel);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    if (reducedMotion) return;
+    if (prefersReducedMotion()) return;
 
     const context = gsap.context(() => {
       gsap.fromTo(
@@ -185,46 +171,71 @@ export function PublicLoveSite() {
     }
   }
 
-  function createPresentation() {
+  function clearFieldError(field: keyof FieldErrors) {
+    if (fieldErrors[field]) {
+      setFieldErrors((current) => ({ ...current, [field]: undefined }));
+    }
+  }
+
+  async function createPresentation() {
+    if (isCreating) return;
+
     setSubmitAttempted(true);
 
-    const missingSender = senderName.trim().length === 0;
-    const missingRecipient = recipientName.trim().length === 0;
+    const validation = validatePublicFields({
+      senderName,
+      recipientName,
+      imageUrlsText,
+    });
 
-    if (missingSender || missingRecipient) {
+    setFieldErrors(validation.errors);
+
+    if (Object.keys(validation.errors).length > 0) {
       requestAnimationFrame(() => {
-        if (missingSender) {
+        if (validation.errors.senderName) {
           senderInputRef.current?.focus();
           return;
         }
 
-        recipientInputRef.current?.focus();
+        if (validation.errors.recipientName) {
+          recipientInputRef.current?.focus();
+        }
       });
       return;
     }
 
+    setIsCreating(true);
+
     try {
-      const payload = createSharePayload({
-        senderName,
-        recipientName,
+      const nextShareUrl = await createPresentationShareUrl({
+        senderName: senderName.trim(),
+        recipientName: recipientName.trim(),
         vibe,
         deckLength: "7",
         dramaLevel: dramaFromCompromise(compromise.value),
         compromiseLevel: compromise.value,
         occasion: "just-because",
         insideJoke: "",
-        imageUrls: [],
-        seed: crypto.randomUUID(),
+        imageUrls: validation.imageUrls,
       });
-      const token = encodeSharePayload(payload);
-      const nextUrl = new URL("/p", window.location.origin);
-      nextUrl.hash = token;
 
-      setShareUrl(nextUrl.toString());
+      setShareUrl(nextShareUrl);
       setActiveWindow("status");
-      toast.success("Private link created");
-    } catch {
-      toast.error("Couldn’t create link. Try again.");
+      toast.success("Link created");
+      requestAnimationFrame(() => {
+        document
+          .querySelector(".public-love-status-window")
+          ?.scrollIntoView({
+            block: "center",
+            behavior: prefersReducedMotion() ? "auto" : "smooth",
+          });
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Couldn't create link. Try again.",
+      );
+    } finally {
+      setIsCreating(false);
     }
   }
 
@@ -235,12 +246,16 @@ export function PublicLoveSite() {
       await navigator.clipboard.writeText(shareUrl);
       toast.success("Link copied");
     } catch {
-      toast.error("Couldn’t copy link. Copy it manually.");
+      toast.error("Couldn't copy. Select the link below.");
     }
   }
 
   return (
     <main ref={rootRef} className="public-love-site">
+      <a className="public-love-skip" href="#create">
+        Skip to creator
+      </a>
+
       <header className="public-love-nav" data-public-love-reveal>
         <a className="public-love-brand" href="#top" aria-label="Love Presentation">
           <span className="public-love-brand-mark" aria-hidden="true">
@@ -249,64 +264,60 @@ export function PublicLoveSite() {
           <span>Love Presentation</span>
         </a>
 
-        <nav className="public-love-links" aria-label="Primary navigation">
-          <a href="#create">Create</a>
-          <a href="#evidence">Evidence</a>
-          <a href="#method">Method</a>
-          <a href="#privacy">Privacy</a>
+        <nav className="public-love-nav-actions" aria-label="Primary navigation">
+          <a
+            className="public-love-nav-link"
+            href="https://github.com/Joe-Simo/love-presentation"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Source
+            <ExternalLinkIcon aria-hidden="true" />
+          </a>
+          <a className="public-love-nav-action" href="#create">
+            Create Link
+            <ArrowRightIcon aria-hidden="true" />
+          </a>
         </nav>
-
-        <a
-          className="public-love-source"
-          href="https://github.com/Joe-Simo/love-presentation"
-          rel="noreferrer"
-          target="_blank"
-        >
-          <GithubMark />
-          Source
-        </a>
       </header>
 
       <section id="top" className="public-love-hero" aria-label="Public love presentation creator">
         <div className="public-love-hero-copy">
-          <p className="public-love-command" data-public-love-reveal>
-            $ love-presentation new
+          <p className="public-love-eyebrow" data-public-love-reveal>
+            <SparklesIcon aria-hidden="true" />
+            Private case-file generator
           </p>
           <h1 data-public-love-reveal>
             <span>Love</span>
             <span>Presentation</span>
           </h1>
           <p className="public-love-hero-line" data-public-love-reveal>
-            Emotionally compromised presentation software.
+            Make a private deck that says the quiet part in slides.
           </p>
           <p className="public-love-subcopy" data-public-love-reveal>
-            Make a private slideshow link for someone who deserves evidence,
-            but not a whole notes-app essay.
+            Add two names, choose the emotional temperature, and send one
+            self-contained link.
           </p>
+
+          <div className="public-love-proof" aria-label="Product details" data-public-love-reveal>
+            {proofItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <div key={item.label} className="public-love-proof-item">
+                  <Icon aria-hidden="true" />
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              );
+            })}
+          </div>
 
           <div className="public-love-actions" data-public-love-reveal>
             <a className="public-love-button public-love-button-primary" href="#create">
-              Create private link
+              Create Link
               <ArrowRightIcon aria-hidden="true" />
             </a>
-            <a className="public-love-button public-love-button-secondary" href="#evidence">
-              View the evidence
-            </a>
-          </div>
-
-          <div className="public-love-proof-strip" data-public-love-reveal>
-            <span>
-              <LockKeyholeIcon aria-hidden="true" />
-              No account
-            </span>
-            <span>
-              <ImageIcon aria-hidden="true" />
-              No uploads
-            </span>
-            <span>
-              <SparklesIcon aria-hidden="true" />
-              No committee
-            </span>
           </div>
         </div>
 
@@ -316,9 +327,14 @@ export function PublicLoveSite() {
           aria-label="Interactive love presentation windows"
           data-public-love-reveal
         >
+          <div className="public-love-stage-header">
+            <span>Workspace</span>
+            <strong>Draft / Preview / Share</strong>
+          </div>
+
           <WindowShell
             id="compose"
-            title="New case"
+            title="Create"
             activeWindow={activeWindow}
             className="public-love-compose-window"
             onActivate={setActiveWindow}
@@ -331,8 +347,8 @@ export function PublicLoveSite() {
               }}
             >
               <div className="public-love-case-helper">
-                <span>Two names. One biased deck. No database.</span>
-                <span>⌘N</span>
+                <span>Case Details</span>
+                <span>Step 01</span>
               </div>
 
               <div className="public-love-field-grid">
@@ -346,6 +362,7 @@ export function PublicLoveSite() {
                     value={senderName}
                     onChange={(event) => {
                       setSenderName(event.target.value);
+                      clearFieldError("senderName");
                       resetShare();
                     }}
                     maxLength={48}
@@ -375,6 +392,7 @@ export function PublicLoveSite() {
                     value={recipientName}
                     onChange={(event) => {
                       setRecipientName(event.target.value);
+                      clearFieldError("recipientName");
                       resetShare();
                     }}
                     maxLength={48}
@@ -395,6 +413,44 @@ export function PublicLoveSite() {
                   ) : null}
                 </label>
               </div>
+
+              <label className="public-love-photo-field" htmlFor="public-love-image-urls">
+                <span>Photo URLs</span>
+                <textarea
+                  id="public-love-image-urls"
+                  name="imageUrls"
+                  className="public-love-textarea"
+                  value={imageUrlsText}
+                  onChange={(event) => {
+                    setImageUrlsText(event.target.value);
+                    clearFieldError("imageUrls");
+                    resetShare();
+                  }}
+                  rows={2}
+                  placeholder="https://example.com/photo.jpg"
+                  aria-invalid={imageUrlsError ? true : undefined}
+                  aria-describedby={
+                    imageUrlsError
+                      ? "public-love-image-urls-error"
+                      : "public-love-image-urls-helper"
+                  }
+                />
+                {imageUrlsError ? (
+                  <small
+                    id="public-love-image-urls-error"
+                    className="public-love-field-error"
+                  >
+                    {imageUrlsError}
+                  </small>
+                ) : (
+                  <small
+                    id="public-love-image-urls-helper"
+                    className="public-love-field-helper"
+                  >
+                    Optional HTTPS image links, one per line.
+                  </small>
+                )}
+              </label>
 
               <fieldset className="public-love-tone-field">
                 <legend>Tone</legend>
@@ -461,13 +517,18 @@ export function PublicLoveSite() {
               <button
                 className="public-love-submit"
                 type="submit"
+                disabled={isCreating}
+                aria-busy={isCreating}
                 aria-describedby={
                   submitAttempted && !canCreate
                     ? "public-love-submit-help"
                     : undefined
-                }
+                  }
               >
-                Create private link
+                {isCreating ? (
+                  <span className="public-love-submit-spinner" aria-hidden="true" />
+                ) : null}
+                <span>Create Link</span>
                 <ArrowRightIcon aria-hidden="true" />
               </button>
               {submitAttempted && !canCreate ? (
@@ -480,165 +541,95 @@ export function PublicLoveSite() {
 
           <WindowShell
             id="preview"
-            title={`Preview — ${recipientLabel.toLowerCase()}`}
+            title="Preview"
             activeWindow={activeWindow}
             className="public-love-preview-window"
             onActivate={setActiveWindow}
           >
             <div className="public-love-preview-toolbar">
-              <span>03 / 07</span>
+              <span>Slide {String(previewIndex).padStart(2, "0")} / 07</span>
               <span className="public-love-progress-dots" aria-hidden="true">
                 {Array.from({ length: 7 }, (_, index) => (
-                  <i key={index} data-active={index === 2} />
+                  <i key={index} data-active={index === previewIndex - 1} />
                 ))}
               </span>
             </div>
 
             <div className="public-love-art-frame" data-public-love-float>
-              <Image
-                src="/love-public/love-presentation-art.png"
-                alt="Generated monochrome glass presentation windows with a small black heart."
-                width={1536}
-                height={864}
-                priority
-              />
+              {heroArtFailed ? (
+                <div
+                  className="public-love-art-fallback"
+                  aria-label="Love Presentation preview"
+                >
+                  <span>{initials}</span>
+                  <p>Love Presentation</p>
+                </div>
+              ) : (
+                <Image
+                  src="/love-public/love-presentation-art.png"
+                  alt="Love Presentation preview deck."
+                  width={1586}
+                  height={992}
+                  sizes="(max-width: 900px) 100vw, 570px"
+                  priority
+                  onError={() => setHeroArtFailed(true)}
+                />
+              )}
               <div className="public-love-art-label">
                 <span>{initials}</span>
-                <span>compatibility memo</span>
+                <span>
+                  {photoCount > 0
+                    ? `${photoCount} photo${photoCount === 1 ? "" : "s"}`
+                    : recipientLabel}
+                </span>
               </div>
+            </div>
+            <div className="public-love-preview-copy" aria-live="polite">
+              <span>{selectedTone.label}</span>
+              <strong>{previewCopy.title}</strong>
+              <p>{previewCopy.body}</p>
             </div>
           </WindowShell>
 
           <WindowShell
             id="status"
-            title="love-presentation"
+            title="Link"
             activeWindow={activeWindow}
             className="public-love-status-window"
             onActivate={setActiveWindow}
-            status="OK"
+            status={shareUrl ? "Ready" : undefined}
           >
-            <div className="public-love-terminal" aria-live="polite">
-              {terminalLines.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
-            </div>
-
             <div className="public-love-share-box">
-              <span>{shareUrl ? "Private link ready" : "Link appears here"}</span>
+              <span>{shareUrl ? "Link Ready" : "Create Link First"}</span>
               {shareUrl ? (
-                <div className="public-love-share-actions">
-                  <button type="button" onClick={copyShareUrl}>
-                    <CopyIcon aria-hidden="true" />
-                    Copy
-                  </button>
-                  <a href={shareUrl} target="_blank" rel="noreferrer">
-                    Open
-                    <ExternalLinkIcon aria-hidden="true" />
-                  </a>
+                <div className="public-love-share-ready">
+                  <input
+                    className="public-love-share-url"
+                    value={shareUrl}
+                    readOnly
+                    aria-label="Share link"
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                  <div className="public-love-share-actions">
+                    <button type="button" onClick={copyShareUrl}>
+                      <CopyIcon aria-hidden="true" />
+                      Copy
+                    </button>
+                    <a href={shareUrl} target="_blank" rel="noreferrer">
+                      Open
+                      <ExternalLinkIcon aria-hidden="true" />
+                    </a>
+                  </div>
                 </div>
               ) : (
-                <span className="public-love-share-empty">No one has been accused yet.</span>
+                <span className="public-love-share-empty">
+                  Waiting for a generated link.
+                </span>
               )}
             </div>
           </WindowShell>
         </div>
       </section>
-
-      <section id="evidence" className="public-love-section public-love-evidence">
-        <div className="public-love-section-heading" data-public-love-reveal>
-          <span>Selected case file</span>
-          <h2>A generated deck about two people behaving suspiciously well together.</h2>
-        </div>
-
-        <div className="public-love-evidence-grid">
-          <div className="public-love-evidence-panel" data-public-love-reveal>
-            {evidenceRows.map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
-
-          <div className="public-love-case-card" data-public-love-reveal>
-            <div className="public-love-case-card-header">
-              <span>Slide 03</span>
-              <span>Case file</span>
-            </div>
-            <h3>Suspicious chemistry.</h3>
-            <p>
-              They laugh at the same dumb stuff. The science is not explaining
-              this one.
-            </p>
-            <div>
-              <CheckIcon aria-hidden="true" />
-              <span>Verdict: approved, unfortunately.</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="method" className="public-love-section public-love-method">
-        <div className="public-love-section-heading" data-public-love-reveal>
-          <span>Method</span>
-          <h2>Three steps. Zero drama.</h2>
-        </div>
-
-        <div className="public-love-method-grid">
-          {methodItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <article key={item.title} data-public-love-reveal>
-                <Icon aria-hidden="true" />
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section id="privacy" className="public-love-section public-love-privacy">
-        <div className="public-love-privacy-copy" data-public-love-reveal>
-          <span>Privacy note</span>
-          <h2>Your deck lives in the link.</h2>
-          <p>
-            Love Presentation keeps the URL-only share model: no login, no
-            uploads, no database. Public software. Private feelings.
-          </p>
-        </div>
-
-        <div className="public-love-privacy-window" data-public-love-reveal>
-          <div>
-            <MonitorIcon aria-hidden="true" />
-            <span>runtime</span>
-            <strong>browser</strong>
-          </div>
-          <div>
-            <ClipboardIcon aria-hidden="true" />
-            <span>storage</span>
-            <strong>none</strong>
-          </div>
-          <div>
-            <LinkIcon aria-hidden="true" />
-            <span>output</span>
-            <strong>one private URL</strong>
-          </div>
-        </div>
-      </section>
-
-      <footer className="public-love-footer" data-public-love-reveal>
-        <p>Open source by one emotionally compromised developer.</p>
-        <a
-          href="https://github.com/Joe-Simo/love-presentation"
-          target="_blank"
-          rel="noreferrer"
-        >
-          View source
-          <ExternalLinkIcon aria-hidden="true" />
-        </a>
-      </footer>
     </main>
   );
 }
@@ -683,18 +674,12 @@ function WindowShell({
           <strong>{title}</strong>
         </button>
         <span className="public-love-window-status">
-          {status ?? (isActive ? "active" : "idle")}
+          {status ?? ""}
         </span>
       </div>
       {children}
     </article>
   );
-}
-
-function initialFor(value: string) {
-  const trimmed = value.trim();
-
-  return trimmed ? trimmed.slice(0, 1).toUpperCase() : "?";
 }
 
 function dramaFromCompromise(value: CompromiseLevel): DramaLevel {
@@ -704,14 +689,81 @@ function dramaFromCompromise(value: CompromiseLevel): DramaLevel {
   return "dramatic";
 }
 
-function GithubMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
-      <path d="M12 2C6.48 2 2 6.59 2 12.25c0 4.52 2.86 8.35 6.83 9.7.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.33 9.33 0 0 1 12 6.98c.85 0 1.7.12 2.5.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.06 10.06 0 0 0 22 12.25C22 6.59 17.52 2 12 2Z" />
-    </svg>
-  );
+function validatePublicFields({
+  senderName,
+  recipientName,
+  imageUrlsText,
+}: {
+  senderName: string;
+  recipientName: string;
+  imageUrlsText: string;
+}) {
+  const errors: FieldErrors = {};
+
+  if (senderName.trim().length === 0) {
+    errors.senderName = "From name is required.";
+  } else if (/[<>{}[\]\\]/.test(senderName)) {
+    errors.senderName = "Remove markup characters.";
+  }
+
+  if (recipientName.trim().length === 0) {
+    errors.recipientName = "To name is required.";
+  } else if (/[<>{}[\]\\]/.test(recipientName)) {
+    errors.recipientName = "Remove markup characters.";
+  }
+
+  let imageUrls: string[] = [];
+
+  try {
+    imageUrls = sanitizeImageUrls(parseImageUrlText(imageUrlsText));
+  } catch {
+    errors.imageUrls = "Use HTTPS image links, one per line.";
+  }
+
+  return { errors, imageUrls };
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function previewCopyFor(
+  vibe: PresentationVibe,
+  compromise: CompromiseLevel,
+  recipientName: string,
+) {
+  if (compromise === "objective") {
+    return {
+      title: `${recipientName}, documented clearly.`,
+      body:
+        vibe === "sincere"
+          ? "Warm slides with just enough proof."
+          : "A clean deck with measured affection.",
+    };
+  }
+
+  if (compromise === "unwell") {
+    return {
+      title: `${recipientName}, this got serious.`,
+      body:
+        vibe === "chaos"
+          ? "High drama. Zero chill. Fully intentional."
+          : "Affection under obvious emotional pressure.",
+    };
+  }
+
+  if (compromise === "suspicious") {
+    return {
+      title: `${recipientName}, something is happening.`,
+      body: "Slightly too much evidence, presented nicely.",
+    };
+  }
+
+  return {
+    title: `${recipientName}, the case is strong.`,
+    body:
+      vibe === "boardroom"
+        ? "Polished enough to look official."
+        : "A soft roast with a real ending.",
+  };
 }
