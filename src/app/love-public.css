@@ -335,12 +335,12 @@
   display: grid;
   grid-template-areas:
     "stage-header stage-header"
-    "compose compose"
-    "preview status";
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    "compose preview"
+    "compose status";
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   gap: 14px;
-  align-content: center;
-  min-height: 716px;
+  align-content: start;
+  min-height: 640px;
   border: 1px solid var(--public-love-border);
   border-radius: var(--radius-geist-fullscreen);
   background: rgb(250 250 250 / 72%);
@@ -389,6 +389,7 @@
 .public-love-window {
   position: relative;
   overflow: hidden;
+  scroll-margin-top: 88px;
   border: 1px solid var(--public-love-border-strong);
   border-radius: var(--radius-geist-raised);
   background: var(--public-love-surface);
@@ -481,6 +482,7 @@
 
 .public-love-compose-window {
   grid-area: compose;
+  align-self: start;
   z-index: 4;
   width: 100%;
 }
@@ -579,8 +581,58 @@
   line-height: 1.35;
 }
 
+.public-love-photo-details {
+  margin: 0 18px 18px;
+  border: 1px solid var(--public-love-border);
+  border-radius: var(--radius-geist-base);
+  background: var(--public-love-surface-solid);
+}
+
+.public-love-photo-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  cursor: pointer;
+  list-style: none;
+  padding: 0 11px;
+  color: var(--public-love-ink);
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 1;
+}
+
+.public-love-photo-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.public-love-photo-details summary::after {
+  color: var(--public-love-muted);
+  content: "+";
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 14px;
+}
+
+.public-love-photo-details[open] summary {
+  border-bottom: 1px solid var(--public-love-border);
+}
+
+.public-love-photo-details[open] summary::after {
+  content: "-";
+}
+
+.public-love-photo-details summary small {
+  margin-left: auto;
+  color: var(--public-love-muted);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 520;
+  line-height: 1;
+}
+
 .public-love-photo-field {
-  padding: 0 18px 18px;
+  padding: 12px;
 }
 
 .public-love-textarea {
@@ -787,6 +839,7 @@
 
 .public-love-preview-window {
   grid-area: preview;
+  align-self: start;
   z-index: 5;
   width: 100%;
 }
@@ -1029,7 +1082,7 @@
   }
 
   .public-love-stage {
-    min-height: 688px;
+    min-height: 620px;
   }
 }
 
@@ -1048,15 +1101,16 @@
   }
 
   .public-love-proof {
-    grid-template-columns: 1fr;
-    max-width: 420px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 520px;
+    margin-top: 22px;
   }
 
   .public-love-stage {
     grid-template-areas:
       "stage-header"
-      "preview"
       "compose"
+      "preview"
       "status";
     grid-template-columns: 1fr;
     min-height: 0;
@@ -1095,7 +1149,7 @@
   }
 
   .public-love-hero {
-    padding-block: 40px 56px;
+    padding-block: 32px 40px;
   }
 
   .public-love-eyebrow {
@@ -1114,6 +1168,32 @@
   .public-love-subcopy {
     max-width: 34ch;
     font-size: 15px;
+  }
+
+  .public-love-proof {
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .public-love-proof-item {
+    gap: 5px;
+    padding: 9px;
+  }
+
+  .public-love-proof-item svg {
+    display: none;
+  }
+
+  .public-love-proof-item span {
+    font-size: 11px;
+  }
+
+  .public-love-proof-item strong {
+    font-size: 12px;
+  }
+
+  .public-love-actions {
+    margin-top: 18px;
   }
 
   .public-love-actions,
@@ -1146,10 +1226,13 @@
 
   .public-love-field-grid,
   .public-love-tone-field,
-  .public-love-photo-field,
   .public-love-range-field,
   .public-love-range-labels {
     padding-inline: 14px;
+  }
+
+  .public-love-photo-details {
+    margin-inline: 14px;
   }
 
   .public-love-submit {

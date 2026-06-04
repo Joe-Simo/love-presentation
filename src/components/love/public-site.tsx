@@ -252,7 +252,7 @@ export function PublicLoveSite() {
 
   return (
     <main ref={rootRef} className="public-love-site">
-      <a className="public-love-skip" href="#create">
+      <a className="public-love-skip" href="#compose">
         Skip to creator
       </a>
 
@@ -274,7 +274,7 @@ export function PublicLoveSite() {
             Source
             <ExternalLinkIcon aria-hidden="true" />
           </a>
-          <a className="public-love-nav-action" href="#create">
+          <a className="public-love-nav-action" href="#compose">
             Create Link
             <ArrowRightIcon aria-hidden="true" />
           </a>
@@ -314,7 +314,7 @@ export function PublicLoveSite() {
           </div>
 
           <div className="public-love-actions" data-public-love-reveal>
-            <a className="public-love-button public-love-button-primary" href="#create">
+            <a className="public-love-button public-love-button-primary" href="#compose">
               Create Link
               <ArrowRightIcon aria-hidden="true" />
             </a>
@@ -414,43 +414,53 @@ export function PublicLoveSite() {
                 </label>
               </div>
 
-              <label className="public-love-photo-field" htmlFor="public-love-image-urls">
-                <span>Photo URLs</span>
-                <textarea
-                  id="public-love-image-urls"
-                  name="imageUrls"
-                  className="public-love-textarea"
-                  value={imageUrlsText}
-                  onChange={(event) => {
-                    setImageUrlsText(event.target.value);
-                    clearFieldError("imageUrls");
-                    resetShare();
-                  }}
-                  rows={2}
-                  placeholder="https://example.com/photo.jpg"
-                  aria-invalid={imageUrlsError ? true : undefined}
-                  aria-describedby={
-                    imageUrlsError
-                      ? "public-love-image-urls-error"
-                      : "public-love-image-urls-helper"
-                  }
-                />
-                {imageUrlsError ? (
-                  <small
-                    id="public-love-image-urls-error"
-                    className="public-love-field-error"
-                  >
-                    {imageUrlsError}
+              <details className="public-love-photo-details">
+                <summary>
+                  <span>Add optional photos</span>
+                  <small>
+                    {photoCount > 0
+                      ? `${photoCount} linked`
+                      : "No uploads required"}
                   </small>
-                ) : (
-                  <small
-                    id="public-love-image-urls-helper"
-                    className="public-love-field-helper"
-                  >
-                    Optional HTTPS image links, one per line.
-                  </small>
-                )}
-              </label>
+                </summary>
+                <label className="public-love-photo-field" htmlFor="public-love-image-urls">
+                  <span>Photo links</span>
+                  <textarea
+                    id="public-love-image-urls"
+                    name="imageUrls"
+                    className="public-love-textarea"
+                    value={imageUrlsText}
+                    onChange={(event) => {
+                      setImageUrlsText(event.target.value);
+                      clearFieldError("imageUrls");
+                      resetShare();
+                    }}
+                    rows={2}
+                    placeholder="Paste HTTPS image links, one per line"
+                    aria-invalid={imageUrlsError ? true : undefined}
+                    aria-describedby={
+                      imageUrlsError
+                        ? "public-love-image-urls-error"
+                        : "public-love-image-urls-helper"
+                    }
+                  />
+                  {imageUrlsError ? (
+                    <small
+                      id="public-love-image-urls-error"
+                      className="public-love-field-error"
+                    >
+                      {imageUrlsError}
+                    </small>
+                  ) : (
+                    <small
+                      id="public-love-image-urls-helper"
+                      className="public-love-field-helper"
+                    >
+                      Use direct HTTPS image links. They stay in the shared URL.
+                    </small>
+                  )}
+                </label>
+              </details>
 
               <fieldset className="public-love-tone-field">
                 <legend>Tone</legend>
@@ -655,6 +665,7 @@ function WindowShell({
 
   return (
     <article
+      id={id}
       className={`public-love-window ${className}`}
       data-active={isActive}
       aria-label={`${title} window`}
