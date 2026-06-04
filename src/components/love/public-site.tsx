@@ -119,6 +119,8 @@ export function PublicLoveSite() {
   const [heroArtFailed, setHeroArtFailed] = useState(false);
   const senderInputRef = useRef<HTMLInputElement>(null);
   const recipientInputRef = useRef<HTMLInputElement>(null);
+  const imageUrlsDetailsRef = useRef<HTMLDetailsElement>(null);
+  const imageUrlsInputRef = useRef<HTMLTextAreaElement>(null);
 
   const compromise = compromiseOptions[compromiseIndex] ?? compromiseOptions[2];
   const selectedTone =
@@ -133,6 +135,11 @@ export function PublicLoveSite() {
     senderName.trim().length > 0 && recipientName.trim().length > 0;
   const previewIndex = Math.min(compromiseIndex + 3, 7);
   const previewCopy = previewCopyFor(vibe, compromise.value, recipientLabel);
+  const photoSummary = imageUrlsError
+    ? "Fix photo links"
+    : photoCount > 0
+      ? `${photoCount} linked`
+      : "No uploads required";
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -199,6 +206,15 @@ export function PublicLoveSite() {
 
         if (validation.errors.recipientName) {
           recipientInputRef.current?.focus();
+          return;
+        }
+
+        if (validation.errors.imageUrls) {
+          if (imageUrlsDetailsRef.current) {
+            imageUrlsDetailsRef.current.open = true;
+          }
+
+          imageUrlsInputRef.current?.focus();
         }
       });
       return;
@@ -414,19 +430,20 @@ export function PublicLoveSite() {
                 </label>
               </div>
 
-              <details className="public-love-photo-details">
+              <details
+                ref={imageUrlsDetailsRef}
+                className="public-love-photo-details"
+                data-invalid={imageUrlsError ? true : undefined}
+              >
                 <summary>
                   <span>Add optional photos</span>
-                  <small>
-                    {photoCount > 0
-                      ? `${photoCount} linked`
-                      : "No uploads required"}
-                  </small>
+                  <small>{photoSummary}</small>
                 </summary>
                 <label className="public-love-photo-field" htmlFor="public-love-image-urls">
                   <span>Photo links</span>
                   <textarea
                     id="public-love-image-urls"
+                    ref={imageUrlsInputRef}
                     name="imageUrls"
                     className="public-love-textarea"
                     value={imageUrlsText}
