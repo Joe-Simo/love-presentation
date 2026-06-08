@@ -9,28 +9,6 @@ import type {
 } from "@/lib/love/types";
 import { createLoveMetrics } from "@/lib/love/metrics";
 
-export const VIBE_OPTIONS: Array<{
-  value: PresentationVibe;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "boardroom",
-    label: "Boardroom",
-    description: "Very official. Deeply unserious.",
-  },
-  {
-    value: "chaos",
-    label: "Chaotic",
-    description: "Fast, dramatic, slightly unhinged.",
-  },
-  {
-    value: "sincere",
-    label: "Soft roast",
-    description: "Sweet first, goofy immediately after.",
-  },
-];
-
 type SlideInput = {
   senderName: string;
   recipientName: string;
@@ -990,15 +968,7 @@ function createDeterministicRandom(seed: string) {
 }
 
 function getCompatibilityScore(senderName: string, recipientName: string) {
-  const input = `${senderName.trim().toLowerCase()}:${recipientName
-    .trim()
-    .toLowerCase()}`;
-  let hash = 2166136261;
-
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return (88 + (Math.abs(hash) % 117) / 10).toFixed(1);
+  // Delegate to the shared seeded metric so the procedural deck and the
+  // compromise-arc "compatibility memo" never disagree for the same couple.
+  return createLoveMetrics(senderName, recipientName).compatibility;
 }

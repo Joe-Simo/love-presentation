@@ -173,6 +173,11 @@ function PresentationPlayerDeck({
         className,
       )}
     >
+      <p className="sr-only" role="status" aria-live="polite">
+        {`Slide ${safeActiveIndex + 1} of ${presentation.slides.length}: ${
+          displaySlide.title
+        }${worseLevel > 0 ? ` — intensity ${worseLevel}` : ""}`}
+      </p>
       <div className="absolute inset-0 opacity-70">
         <DeckScene
           activeIndex={safeActiveIndex}

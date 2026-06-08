@@ -34,7 +34,7 @@ export function createLoveMetrics(senderName: string, recipientName: string) {
   } satisfies LoveMetrics;
 }
 
-export function seededScore(input: string, min = 82, max = 99) {
+function seededScore(input: string, min = 82, max = 99) {
   const range = Math.max(0, Math.round((max - min) * 10));
   return min + (hashString(input) % (range + 1)) / 10;
 }

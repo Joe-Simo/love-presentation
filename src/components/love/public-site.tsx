@@ -18,6 +18,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { createPresentationShareUrl } from "@/lib/love/create-presentation";
+import { FORBIDDEN_TEXT_CHARACTERS } from "@/lib/love/schema";
 import {
   parseImageUrlText,
   sanitizeImageUrls,
@@ -393,6 +394,7 @@ export function PublicLoveSite() {
                     <small
                       id="public-love-sender-error"
                       className="public-love-field-error"
+                      role="alert"
                     >
                       {senderError}
                     </small>
@@ -423,6 +425,7 @@ export function PublicLoveSite() {
                     <small
                       id="public-love-recipient-error"
                       className="public-love-field-error"
+                      role="alert"
                     >
                       {recipientError}
                     </small>
@@ -465,6 +468,7 @@ export function PublicLoveSite() {
                     <small
                       id="public-love-image-urls-error"
                       className="public-love-field-error"
+                      role="alert"
                     >
                       {imageUrlsError}
                     </small>
@@ -555,7 +559,7 @@ export function PublicLoveSite() {
                 {isCreating ? (
                   <span className="public-love-submit-spinner" aria-hidden="true" />
                 ) : null}
-                <span>Create Link</span>
+                <span>{isCreating ? "Creating link…" : "Create Link"}</span>
                 <ArrowRightIcon aria-hidden="true" />
               </button>
               {submitAttempted && !canCreate ? (
@@ -730,13 +734,13 @@ function validatePublicFields({
 
   if (senderName.trim().length === 0) {
     errors.senderName = "From name is required.";
-  } else if (/[<>{}[\]\\]/.test(senderName)) {
+  } else if (FORBIDDEN_TEXT_CHARACTERS.test(senderName)) {
     errors.senderName = "Remove markup characters.";
   }
 
   if (recipientName.trim().length === 0) {
     errors.recipientName = "To name is required.";
-  } else if (/[<>{}[\]\\]/.test(recipientName)) {
+  } else if (FORBIDDEN_TEXT_CHARACTERS.test(recipientName)) {
     errors.recipientName = "Remove markup characters.";
   }
 

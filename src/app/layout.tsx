@@ -16,6 +16,21 @@ export const metadata: Metadata = {
     url: "https://lovepresentation.com",
     siteName: "Love Presentation",
     type: "website",
+    images: [
+      {
+        url: "/love-public/love-presentation-art.png",
+        width: 1586,
+        height: 992,
+        alt: "Love Presentation",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Love Presentation",
+    description:
+      "Emotionally compromised presentation software for private love slideshow links.",
+    images: ["/love-public/love-presentation-art.png"],
   },
 };
 

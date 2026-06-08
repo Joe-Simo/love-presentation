@@ -8,10 +8,18 @@ type DeckSceneProps = {
   total: number;
 };
 
+type SceneHandle = {
+  reducedMotion: boolean;
+  applyStatic: () => void;
+};
+
 export function DeckScene({ activeIndex, total }: DeckSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const activeIndexRef = useRef(activeIndex);
   const totalRef = useRef(total);
+  // Imperative handle so the reduced-motion path can re-render on slide change
+  // without rebuilding the WebGL context.
+  const handleRef = useRef<SceneHandle | null>(null);
 
   useEffect(() => {
     activeIndexRef.current = activeIndex;
@@ -100,13 +108,32 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
     resizeObserver.observe(canvas);
     resize();
 
+    // Snap cards to their resting layout for the current active index and draw
+    // a single frame. Used for the initial reduced-motion paint and on every
+    // subsequent slide change while reduced motion is on.
+    const applyStatic = () => {
+      const active = activeIndexRef.current;
+
+      for (const [index, card] of cards.entries()) {
+        const isActive = index === active;
+        card.material = isActive ? activeMaterial : restingMaterial;
+        card.position.x = (index - active) * 0.018;
+        card.position.z = -index * 0.13 + (isActive ? 0.2 : 0);
+      }
+
+      renderer.render(scene, camera);
+    };
+
+    handleRef.current = { reducedMotion, applyStatic };
+
     const timer = new THREE.Timer();
     let frameId = 0;
 
     if (reducedMotion) {
-      renderer.render(scene, camera);
+      applyStatic();
 
       return () => {
+        handleRef.current = null;
         resizeObserver.disconnect();
         cardGeometry.dispose();
         activeMaterial.dispose();
@@ -142,9 +169,25 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
       frameId = window.requestAnimationFrame(animate);
     };
 
-    animate();
+    // Pause the render loop while the tab is backgrounded to avoid wasting
+    // GPU/battery on frames no one can see.
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        window.cancelAnimationFrame(frameId);
+      } else {
+        frameId = window.requestAnimationFrame(animate);
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    if (!document.hidden) {
+      frameId = window.requestAnimationFrame(animate);
+    }
 
     return () => {
+      handleRef.current = null;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
       cardGeometry.dispose();
@@ -153,6 +196,16 @@ export function DeckScene({ activeIndex, total }: DeckSceneProps) {
       renderer.dispose();
     };
   }, [total]);
+
+  // Under reduced motion the animation loop never runs, so re-render a single
+  // static frame whenever the active slide changes.
+  useEffect(() => {
+    const handle = handleRef.current;
+
+    if (handle?.reducedMotion) {
+      handle.applyStatic();
+    }
+  }, [activeIndex]);
 
   return (
     <canvas

@@ -7,12 +7,19 @@ import {
   MAX_SHARE_TOKEN_LENGTH,
 } from "@/lib/love/config";
 
+// Single source of truth for the markup/script characters rejected in free
+// text. Reused by the client-side creator validation to prevent drift.
+export const FORBIDDEN_TEXT_CHARACTERS = /[<>{}[\]\\]/;
+
 const cleanName = z
   .string()
   .trim()
   .min(1, "Names cannot be empty.")
   .max(MAX_NAME_LENGTH, `Names must be ${MAX_NAME_LENGTH} characters or fewer.`)
-  .regex(/^[^<>{}[\]\\]+$/, "Names cannot contain markup or script characters.");
+  .refine(
+    (value) => !FORBIDDEN_TEXT_CHARACTERS.test(value),
+    "Names cannot contain markup or script characters.",
+  );
 
 export const vibeSchema = z.enum(["boardroom", "chaos", "sincere"]);
 export const compromiseLevelSchema = z.enum([
@@ -46,7 +53,10 @@ const cleanInsideJoke = z
     MAX_INSIDE_JOKE_LENGTH,
     `Inside jokes must be ${MAX_INSIDE_JOKE_LENGTH} characters or fewer.`,
   )
-  .regex(/^[^<>{}[\]\\]*$/, "Inside jokes cannot contain markup characters.");
+  .refine(
+    (value) => !FORBIDDEN_TEXT_CHARACTERS.test(value),
+    "Inside jokes cannot contain markup characters.",
+  );
 
 export const isoDateSchema = z.iso.datetime({ offset: true });
 
@@ -55,9 +65,16 @@ export const externalImageUrlSchema = z
   .trim()
   .max(MAX_IMAGE_URL_LENGTH, "Image URLs are too long.")
   .url("Enter a valid image URL.")
-  .refine((value) => new URL(value).protocol === "https:", {
-    message: "Image URLs must use HTTPS.",
-  });
+  .refine(
+    (value) => {
+      try {
+        return new URL(value).protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "Image URLs must use HTTPS." },
+  );
 
 export const imageUrlsSchema = z
   .array(externalImageUrlSchema)
