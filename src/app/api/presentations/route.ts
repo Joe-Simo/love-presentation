@@ -1,4 +1,5 @@
 import { checkBotId } from "botid/server";
+import type { IncomingHttpHeaders } from "node:http";
 import { NextResponse } from "next/server";
 import {
   createPresentationResponseSchema,
@@ -6,16 +7,32 @@ import {
 } from "@/lib/love/schema";
 import { createSharePayload, encodeSharePayload } from "@/lib/love/share";
 
-export async function POST(request: Request) {
-  const verification = await verifyHumanRequest();
+type HumanVerification =
+  | {
+      status: "human";
+    }
+  | {
+      status: "bot";
+    }
+  | {
+      status: "unavailable";
+      code: "botid_requires_vercel_oidc" | "botid_verification_unavailable";
+      message: string;
+    };
 
-  if (verification === "bot") {
+export async function POST(request: Request) {
+  const verification = await verifyHumanRequest(request);
+
+  if (verification.status === "bot") {
     return NextResponse.json({ error: "Access denied." }, { status: 403 });
   }
 
-  if (verification === "unavailable") {
+  if (verification.status === "unavailable") {
     return NextResponse.json(
-      { error: "Bot verification is unavailable." },
+      {
+        error: verification.message,
+        code: verification.code,
+      },
       { status: 503 },
     );
   }
@@ -41,19 +58,62 @@ export async function POST(request: Request) {
   return NextResponse.json(response);
 }
 
-async function verifyHumanRequest() {
-  try {
-    const verification = await checkBotId();
+async function verifyHumanRequest(request: Request): Promise<HumanVerification> {
+  const oidcToken =
+    request.headers.get("x-vercel-oidc-token") ?? process.env.VERCEL_OIDC_TOKEN;
 
-    return verification.isBot ? "bot" : "human";
+  if (requiresVercelOidcToken(oidcToken)) {
+    return {
+      status: "unavailable",
+      code: "botid_requires_vercel_oidc",
+      message: "Bot verification is not configured for this deployment.",
+    };
+  }
+
+  try {
+    const verification = await checkBotId({
+      advancedOptions: {
+        headers: headersForBotId(request),
+        ...(oidcToken ? { vercelOidcToken: oidcToken } : {}),
+      },
+    });
+
+    return verification.isBot ? { status: "bot" } : { status: "human" };
   } catch (error) {
     console.error(
       "BotID verification failed.",
       error instanceof Error ? error.message : error,
     );
 
-    return "unavailable";
+    return {
+      status: "unavailable",
+      code: "botid_verification_unavailable",
+      message: "Bot verification is unavailable.",
+    };
   }
+}
+
+function requiresVercelOidcToken(oidcToken: string | null | undefined) {
+  const isProductionRuntime = process.env.NODE_ENV === "production";
+  const isVercelRuntime = process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+
+  return isProductionRuntime && !isVercelRuntime && !oidcToken;
+}
+
+function headersForBotId(request: Request): IncomingHttpHeaders {
+  const headers: IncomingHttpHeaders = {};
+  const url = new URL(request.url);
+
+  request.headers.forEach((value, key) => {
+    headers[key.toLowerCase()] = value;
+  });
+
+  headers.host ??= url.host;
+  headers.url = request.url;
+  headers["x-method"] = request.method;
+  headers["x-path"] = url.pathname;
+
+  return headers;
 }
 
 async function readJson(request: Request) {

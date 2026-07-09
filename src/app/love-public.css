@@ -1073,6 +1073,23 @@
   }
 }
 
+@media (max-width: 1320px) and (min-width: 1181px) {
+  .public-love-hero {
+    grid-template-columns: minmax(420px, 0.74fr) minmax(600px, 1.26fr);
+    gap: 40px;
+  }
+
+  .public-love-hero h1 {
+    max-width: 100%;
+    font-size: 64px;
+  }
+
+  .public-love-hero-line {
+    max-width: 28ch;
+    font-size: 23px;
+  }
+}
+
 @media (max-width: 1180px) {
   .public-love-hero {
     grid-template-columns: 1fr;

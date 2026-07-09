@@ -187,14 +187,19 @@ function PresentationPlayerDeck({
       <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,0.96)_37%,rgba(255,255,255,0.34)_100%)]" />
       <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,255,255,0))]" />
 
-      <div className="relative z-10 flex min-h-[inherit] flex-col justify-between p-4 sm:p-7">
+      <div
+        className={cn(
+          "relative z-10 flex min-h-[inherit] flex-col justify-between p-3 sm:p-7",
+          shared && "pb-28 sm:pb-7",
+        )}
+      >
         {isFinalSlide ? <FinalConfetti /> : null}
-        <div className="text-label-13 flex flex-wrap items-center justify-between gap-3 text-muted-foreground">
+        <div className="text-label-13 grid gap-3 text-muted-foreground sm:flex sm:items-center sm:justify-between">
           <Badge variant="outline" className="max-w-full bg-background/80">
             {presentation.senderName} for {presentation.recipientName}
           </Badge>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3 sm:flex-none">
-            <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <div className="flex min-w-0 items-center justify-between gap-3 sm:flex-none sm:justify-end">
+            <div className="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-end sm:gap-1.5">
               {presentation.slides.map((currentSlide, index) => (
                 <button
                   key={currentSlide.id}
@@ -203,7 +208,7 @@ function PresentationPlayerDeck({
                   aria-current={safeActiveIndex === index ? "step" : undefined}
                   onClick={() => setActiveIndex(index)}
                   className={cn(
-                    "grid size-8 place-items-center rounded-[var(--radius-geist-base)] border border-transparent text-foreground transition-[background-color,border-color,box-shadow] focus-geist hover:border-border hover:bg-muted",
+                    "grid size-7 place-items-center rounded-[var(--radius-geist-base)] border border-transparent text-foreground transition-[background-color,border-color,box-shadow] focus-geist hover:border-border hover:bg-muted sm:size-8",
                     safeActiveIndex === index && "border-border bg-muted",
                   )}
                 >
@@ -211,7 +216,7 @@ function PresentationPlayerDeck({
                     className={cn(
                       "block h-2 w-2 rounded-full border border-foreground/25 bg-background transition-[width,background-color,border-color]",
                       safeActiveIndex === index &&
-                        "w-5 border-foreground bg-foreground",
+                        "w-4 border-foreground bg-foreground sm:w-5",
                     )}
                   />
                 </button>
@@ -226,7 +231,7 @@ function PresentationPlayerDeck({
 
         <div
           ref={slideRef}
-          className="grid flex-1 items-center gap-5 py-5 sm:gap-7 sm:py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(260px,0.62fr)] xl:gap-12"
+          className="grid flex-1 items-center gap-4 py-4 sm:gap-7 sm:py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(260px,0.62fr)] xl:gap-12"
         >
           <article className="min-w-0 max-w-3xl">
             <p className="text-label-12 mb-4 uppercase text-muted-foreground">
@@ -251,7 +256,7 @@ function PresentationPlayerDeck({
 
           <div className="relative min-h-[250px]">
             {visibleImage ? (
-              <div className="material-medium relative mx-auto aspect-[4/5] w-full max-w-[280px] overflow-hidden bg-background sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
+              <div className="material-medium relative mx-auto aspect-[4/5] w-full max-w-[240px] overflow-hidden bg-background sm:ml-auto sm:max-w-[320px] 2xl:max-w-[380px]">
                 {!imageLoaded ? (
                   <div className="text-label-13 absolute inset-0 z-10 grid place-items-center bg-background text-muted-foreground">
                     Loading photo...
@@ -295,7 +300,7 @@ function PresentationPlayerDeck({
                 />
               </div>
             ) : (
-              <div className="mx-auto flex aspect-[4/5] w-full max-w-[280px] flex-col justify-between overflow-hidden rounded-[var(--radius-geist-raised)] border border-border bg-foreground p-5 text-background shadow-[var(--geist-shadow-medium)] sm:ml-auto sm:max-w-[360px] xl:max-w-[380px]">
+              <div className="mx-auto flex aspect-[4/5] w-full max-w-[240px] flex-col justify-between overflow-hidden rounded-[var(--radius-geist-raised)] border border-border bg-foreground p-5 text-background shadow-[var(--geist-shadow-medium)] sm:ml-auto sm:max-w-[320px] 2xl:max-w-[380px]">
                 <div className="text-label-12 flex items-center justify-between uppercase text-background/60">
                   <span>LP-01</span>
                   <span>{displaySlide.kicker}</span>
@@ -325,7 +330,13 @@ function PresentationPlayerDeck({
           </div>
         </div>
 
-        <div className="material-small bg-background/88 p-3 backdrop-blur">
+        <div
+          className={cn(
+            "material-small bg-background/88 p-2.5 backdrop-blur sm:p-3",
+            shared &&
+              "fixed inset-x-3 bottom-3 z-20 sm:sticky sm:inset-x-auto sm:bottom-3",
+          )}
+        >
           <div className="love-objectivity-meter">
             <span>Objectivity</span>
             <div aria-hidden="true">
@@ -347,8 +358,9 @@ function PresentationPlayerDeck({
             </span>
           </Progress>
 
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
             <Button
+              className="justify-self-start"
               variant="outline"
               onClick={() => setActiveIndex(Math.max(0, safeActiveIndex - 1))}
               disabled={safeActiveIndex === 0}
@@ -357,6 +369,7 @@ function PresentationPlayerDeck({
               Back
             </Button>
             <Button
+              className="justify-self-center px-2 sm:px-2.5"
               variant="outline"
               onClick={() =>
                 setWorseLevel((current) => Math.min(current + 1, 5))
@@ -366,6 +379,7 @@ function PresentationPlayerDeck({
               Make it worse
             </Button>
             <Button
+              className="justify-self-end"
               onClick={() =>
                 setActiveIndex(
                   Math.min(presentation.slides.length - 1, safeActiveIndex + 1),

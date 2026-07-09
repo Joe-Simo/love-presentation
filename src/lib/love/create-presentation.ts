@@ -13,7 +13,7 @@ export async function createPresentationShareUrl(input: CreatorFields) {
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(errorMessageForStatus(response.status));
+    throw new Error(errorMessageForStatus(response.status, body));
   }
 
   const parsed = createPresentationResponseSchema.safeParse(body);
@@ -28,7 +28,7 @@ export async function createPresentationShareUrl(input: CreatorFields) {
   return shareUrl.toString();
 }
 
-function errorMessageForStatus(status: number) {
+function errorMessageForStatus(status: number, body: unknown) {
   if (status === 403) {
     return "Access denied.";
   }
@@ -38,8 +38,22 @@ function errorMessageForStatus(status: number) {
   }
 
   if (status === 503) {
+    if (errorCodeFromBody(body) === "botid_requires_vercel_oidc") {
+      return "This deployment is missing bot verification configuration.";
+    }
+
     return "Bot verification is unavailable. Try again later.";
   }
 
   return "Couldn't create link. Try again.";
+}
+
+function errorCodeFromBody(body: unknown) {
+  if (!body || typeof body !== "object" || !("code" in body)) {
+    return "";
+  }
+
+  const { code } = body;
+
+  return typeof code === "string" ? code : "";
 }
