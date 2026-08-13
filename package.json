@@ -2,7 +2,7 @@
   "name": "love-presentation",
   "version": "0.1.0",
   "private": false,
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "homepage": "https://lovepresentation.com",
   "repository": {
     "type": "git",
