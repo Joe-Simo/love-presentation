@@ -28,4 +28,4 @@ Deploy on Vercel with the default Next.js build settings.
 
 ## License
 
-MIT
+GNU Affero General Public License v3.0 only (`AGPL-3.0-only`). See `LICENSE`.
